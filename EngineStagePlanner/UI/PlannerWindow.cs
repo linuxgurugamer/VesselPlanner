@@ -203,6 +203,7 @@ namespace EngineStagePlanner.UI
             private bool _closePlanningAfterAdd;
             private bool _solidEditorWindowBackgrounds = true;
             private bool _useAltSkin;
+            private DeltaVBasis _targetDeltaVBasis = DeltaVBasis.Vacuum;
             private string _csvExportDirectory = "EngineStagePlanner/PluginData/CSV";
             private string _pngExportDirectory = "Screenshots";
             private float _planningEnginePaneFraction = 0.35f;
@@ -249,6 +250,14 @@ namespace EngineStagePlanner.UI
             {
                 get { return _closePlanningAfterAdd; }
                 set { _closePlanningAfterAdd = value; }
+            }
+
+            // Whether the Planning target delta-v is measured in vacuum or at the selected
+            // body and altitude.
+            public DeltaVBasis TargetDeltaVBasis
+            {
+                get { return _targetDeltaVBasis; }
+                set { _targetDeltaVBasis = value; }
             }
 
             // False draws the mod's windows with the KSP skin, true with the stock Unity
@@ -321,6 +330,12 @@ namespace EngineStagePlanner.UI
                     _closePlanningAfterAdd = ReadBool(settings, "ClosePlanningAfterAdd", _closePlanningAfterAdd);
                     _solidEditorWindowBackgrounds = ReadBool(settings, "SolidEditorWindowBackgrounds", _solidEditorWindowBackgrounds);
                     UseAltSkin = ReadBool(settings, WindowSkin.SettingsKey, _useAltSkin);
+                    if (settings.HasValue("TargetDeltaVBasis"))
+                    {
+                        _targetDeltaVBasis = string.Equals(settings.GetValue("TargetDeltaVBasis"), "Atmospheric", StringComparison.OrdinalIgnoreCase)
+                            ? DeltaVBasis.Atmospheric
+                            : DeltaVBasis.Vacuum;
+                    }
                     if (settings.HasValue("CsvExportDirectory"))
                     {
                         string csvDirectory = settings.GetValue("CsvExportDirectory");
@@ -359,6 +374,7 @@ namespace EngineStagePlanner.UI
                     settings.AddValue("ClosePlanningAfterAdd", ClosePlanningAfterAdd);
                     settings.AddValue("SolidEditorWindowBackgrounds", SolidEditorWindowBackgrounds);
                     settings.AddValue(WindowSkin.SettingsKey, UseAltSkin);
+                    settings.AddValue("TargetDeltaVBasis", _targetDeltaVBasis.ToString());
                     settings.AddValue("CsvExportDirectory", _csvExportDirectory);
                     settings.AddValue("PngExportDirectory", _pngExportDirectory);
                     settings.AddValue("PlanningEnginePaneFraction", _planningEnginePaneFraction.ToString("0.####", CultureInfo.InvariantCulture));
@@ -986,8 +1002,26 @@ namespace EngineStagePlanner.UI
             // resizes it. Calculate and the status line stay pinned below the scroll view.
             _planningRequirementsViewport = PlanningRequirementsScrollHeight();
             _planningRequirementsScroll = GUILayout.BeginScrollView(_planningRequirementsScroll, GUILayout.Height(_planningRequirementsViewport));
-            Field("Target Vac Δv (m/s)", ref _targetDv);
-            GUILayout.Label("Target sizes the stage in vacuum; altitude only changes atmospheric Δv/thrust/TWR.");
+            bool atmosphericTarget = _uiSettings.TargetDeltaVBasis == DeltaVBasis.Atmospheric;
+            Field(atmosphericTarget ? "Target Atm Δv (m/s)" : "Target Vac Δv (m/s)", ref _targetDv);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Δv basis", GUILayout.Width(80));
+            if (GUILayout.Toggle(!atmosphericTarget, "Vacuum", "Button", GUILayout.Width(90)) && atmosphericTarget)
+            {
+                _uiSettings.TargetDeltaVBasis = DeltaVBasis.Vacuum;
+                _uiSettings.Save();
+                RecalculateForFilterChange();
+            }
+            if (GUILayout.Toggle(atmosphericTarget, "Atmosphere", "Button", GUILayout.Width(90)) && !atmosphericTarget)
+            {
+                _uiSettings.TargetDeltaVBasis = DeltaVBasis.Atmospheric;
+                _uiSettings.Save();
+                RecalculateForFilterChange();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(atmosphericTarget
+                ? "Target is met at the selected body and altitude, so changing either resizes the stage."
+                : "Target sizes the stage in vacuum; altitude only changes atmospheric Δv/thrust/TWR.");
             Field("Minimum TWR", ref _minTwr);
             _useCraftPayload = GUILayout.Toggle(_useCraftPayload, "Use craft payload above selected stage");
             GUI.enabled = !_useCraftPayload;
@@ -1550,6 +1584,7 @@ namespace EngineStagePlanner.UI
                 PayloadDryMassTons = _useCraftPayload ? _snapshot.PayloadAboveStageMassTons : payload,
                 OtherStageDryMassTons = 0.0,
                 TargetDeltaV = dv,
+                TargetDeltaVBasis = _uiSettings.TargetDeltaVBasis,
                 MinimumTwr = twr,
                 Gravity = GetSelectedTwrGravity(),
                 Atmospheres = atmospheres,

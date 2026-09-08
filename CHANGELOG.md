@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.62
+
+- Added a **Δv basis** selector to the Planning **Requirements** pane: **Vacuum** or **Atmosphere**. The target field is labelled to match, and the choice is saved as `TargetDeltaVBasis`.
+- On the vacuum basis the stage is sized from vacuum Isp as before, so the design does not change with the selected body or altitude.
+- On the atmospheric basis the stage is sized from the Isp at the selected pressure, so the target is met where the craft actually flies. The altitude then does resize the stage: the same target needs more propellant the lower and thicker the air.
+- The results table still reports both Atm Δv and Vac Δv, so the figure that was not targeted is still visible.
+
 ## 0.5.61
 
 - Fixed the planner window flickering until a grip was dragged.

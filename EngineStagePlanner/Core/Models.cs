@@ -85,11 +85,22 @@ namespace EngineStagePlanner.Core
         }
     }
 
+    // Which of an engine's two Isp figures the target delta-v is measured against.
+    public enum DeltaVBasis
+    {
+        Vacuum,
+        Atmospheric
+    }
+
     public sealed class StageRequirements
     {
         public double PayloadDryMassTons { get; set; }
         public double OtherStageDryMassTons { get; set; }
         public double TargetDeltaV { get; set; }
+        // Vacuum sizes the stage from vacuum Isp, so the design is independent of the
+        // selected body and altitude. Atmospheric sizes it from the Isp at the selected
+        // pressure instead, which means the altitude does redesign the stage.
+        public DeltaVBasis TargetDeltaVBasis { get; set; } = DeltaVBasis.Vacuum;
         public double MinimumTwr { get; set; }
         public double Gravity { get; set; } = StageSolver.StandardGravity;
         public double Atmospheres { get; set; }

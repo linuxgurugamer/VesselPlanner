@@ -23,10 +23,14 @@ namespace EngineStagePlanner.Core
             if (engineCount <= 0 || req.TargetDeltaV <= 0.0 || req.Gravity <= 0.0)
                 return Fail(result, "Invalid planning inputs.");
 
-            // Planning geometry (fuel load, tank mass, wet/dry mass and burn time) is
-            // deliberately based on the engine's vacuum performance. Moving the altitude
-            // slider must only re-evaluate atmospheric performance; it must not redesign
-            // the stage. This keeps VacuumDeltaV and BurnTimeSeconds invariant with altitude.
+            // Planning geometry (fuel load, tank mass, wet/dry mass and burn time) is based
+            // on the engine's vacuum performance by default. Moving the altitude slider then
+            // only re-evaluates atmospheric performance rather than redesigning the stage,
+            // which keeps VacuumDeltaV and BurnTimeSeconds invariant with altitude.
+            //
+            // On the atmospheric basis the target is instead met at the selected pressure,
+            // so the sizing uses the atmospheric Isp and the altitude does change the design:
+            // the same target needs more propellant the lower and thicker the air gets.
             double vacuumIsp = engine.VacuumIsp;
             double atmosphericIsp = engine.IspAtPressure(req.Atmospheres);
             double thrust = engine.ThrustAtEnvironment(
@@ -39,6 +43,8 @@ namespace EngineStagePlanner.Core
             if (ispProps.Count == 0)
                 return Fail(result, "No mass-bearing propellants could be resolved for delta-v calculation.");
 
+            double sizingIsp = req.TargetDeltaVBasis == DeltaVBasis.Atmospheric ? atmosphericIsp : vacuumIsp;
+
             double ratio = Math.Max(0.0, req.TankDryMassPerPropellantMass);
             double fixedDry = result.PayloadMassTons + result.OtherDryMassTons + result.EngineMassTons;
             double propMass = Math.Max(0.001, fixedDry * 0.25);
@@ -47,9 +53,9 @@ namespace EngineStagePlanner.Core
             {
                 double tankDry = propMass * ratio;
                 double dryMass = fixedDry + tankDry;
-                // Size the stage to the requested VACUUM delta-v. The atmospheric
-                // delta-v is then evaluated from the same fixed mass ratio.
-                double massRatio = Math.Exp(req.TargetDeltaV / (vacuumIsp * StandardGravity));
+                // Size the stage to the requested delta-v on the selected basis. The other
+                // figure is then evaluated from the same fixed mass ratio.
+                double massRatio = Math.Exp(req.TargetDeltaV / (sizingIsp * StandardGravity));
                 double nextPropMass = dryMass * (massRatio - 1.0);
 
                 if (double.IsNaN(nextPropMass) || double.IsInfinity(nextPropMass) || nextPropMass > 1e9)

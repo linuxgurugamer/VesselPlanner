@@ -228,6 +228,7 @@ Analyze Existing computes burn duration from the propellant mass actually usable
 - 0.5.28 adds an independent persistent PNG export folder, defaulting to `KSP_ROOT/Screenshots`, with relative PNG paths resolved from the KSP root.
 - 0.5.29 corrects the flight graph bottom layout so the resize grip and lower edge remain flush with the window bottom.
 - 0.5.30 removes the extra footer spacer so the final flight-data status/export line is the bottom layout row of the window while the resize grip remains overlaid at the lower-right.
+- 0.5.62 adds a Δv basis selector so the Planning target can be met in vacuum or at the selected altitude.
 - 0.5.61 fixes the planner window flickering, caused by the candidate list sizing itself from the window it sizes.
 - 0.5.60 stops the Requirements pane shrinking past the point where the candidate list can follow it.
 - 0.5.59 stops the Planning panes drifting when a grip is dragged past its limit.
