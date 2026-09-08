@@ -39,20 +39,33 @@ namespace EngineStagePlanner.Core
 
                 double requestedTotal = 0.0;
                 double excessTotal = 0.0;
+                bool useVolume = solution.Propellants.All(r => r.VolumeLiters > 0.0);
                 foreach (PropellantRequirement req in solution.Propellants)
                 {
                     TankResourceCapacity cap = tank.Resources.First(r =>
                         string.Equals(r.ResourceName, req.ResourceName, StringComparison.OrdinalIgnoreCase));
                     double providedUnits = cap.Units * count;
                     double providedMass = providedUnits * cap.DensityTonsPerUnit;
-                    requestedTotal += req.Units;
-                    excessTotal += Math.Max(0.0, providedUnits - req.Units);
+                    double providedVolume = cap.LitersPerUnit > 0.0 ? providedUnits * cap.LitersPerUnit : 0.0;
+
+                    if (useVolume)
+                    {
+                        requestedTotal += req.VolumeLiters;
+                        excessTotal += Math.Max(0.0, providedVolume - req.VolumeLiters);
+                    }
+                    else
+                    {
+                        requestedTotal += req.Units;
+                        excessTotal += Math.Max(0.0, providedUnits - req.Units);
+                    }
+
                     suggestion.Provided.Add(new PropellantRequirement
                     {
                         ResourceName = req.ResourceName,
+                        IgnoreForIsp = req.IgnoreForIsp,
                         Units = providedUnits,
                         MassTons = providedMass,
-                        VolumeLiters = 0.0
+                        VolumeLiters = providedVolume
                     });
                 }
                 suggestion.ExcessFraction = requestedTotal > 0.0 ? excessTotal / requestedTotal : 0.0;

@@ -40,8 +40,9 @@ namespace EngineStagePlanner.Core
             var r = new StageSolution { Engine = engine, EngineCount = count, Isp = engine.IspAtPressure(atmospheres) };
             if (r.Isp <= 0.0) return Fail(r, "No usable ISP.");
 
-            var props = engine.Propellants.Where(p => !p.IgnoreForIsp && p.Ratio > 0.0 && p.DensityTonsPerUnit > 0.0).ToList();
-            if (props.Count == 0) return Fail(r, "No mass-bearing propellants.");
+            var allProps = engine.Propellants.Where(p => p.Ratio > 0.0).ToList();
+            var props = allProps.Where(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0).ToList();
+            if (props.Count == 0) return Fail(r, "No mass-bearing propellants for delta-v calculation.");
 
             // Propellant ratios are resource-unit ratios. For existing-stage delta-v, use the
             // resource amount currently loaded in the editor, not maxAmount/capacity. This matches
@@ -55,45 +56,122 @@ namespace EngineStagePlanner.Core
             }
             if (double.IsInfinity(mixtureScale) || mixtureScale <= 0.0) return Fail(r, "No usable propellant amount.");
 
-            foreach (var p in props)
+            foreach (var p in allProps)
             {
                 double units = mixtureScale * p.Ratio;
                 r.Propellants.Add(new PropellantRequirement
                 {
                     ResourceName = p.ResourceName,
                     Ratio = p.Ratio,
+                    IgnoreForIsp = p.IgnoreForIsp,
                     Units = units,
                     MassTons = units * p.DensityTonsPerUnit,
                     VolumeLiters = p.LitersPerUnit > 0.0 ? units * p.LitersPerUnit : 0.0
                 });
             }
 
-            r.PropellantMassTons = r.Propellants.Sum(x => x.MassTons);
+            // Only mass-bearing resources which participate in the Isp mixture are
+            // treated as rocket-equation propellant mass. Auxiliary/ignoreForIsp
+            // resources are still shown with their required units and volume.
+            double scannedPropellantMass = props.Sum(p => mixtureScale * p.Ratio * p.DensityTonsPerUnit);
+
+            // For a candidate engine, burn duration must use only the propellant that this
+            // engine can actually consume in its configured mixture.  DeltaVStageInfo.fuelMass
+            // is the stock stage's total fuel mass for the currently installed propulsion
+            // system and may include resources which a replacement candidate does not burn.
+            // Using it here can overstate (or otherwise distort) candidate burn time.
+            //
+            // scannedPropellantMass is derived from the limiting resource amount and the
+            // candidate engine's own propellant ratios, so it is the correct m in:
+            //     t = m * IspVac * g0 / FVac
+            // Stock start/stage/end masses remain authoritative for delta-v and TWR.
+            r.PropellantMassTons = scannedPropellantMass;
             r.TankVolumeLiters = r.Propellants.Sum(x => x.VolumeLiters);
             r.PayloadMassTons = snap.PayloadAboveStageMassTons;
             r.OtherDryMassTons = snap.StageNonEngineDryMassTons;
             r.EngineMassTons = engine.MassTons * count;
             r.EngineCost = engine.Cost * count;
-            // Loaded resources that this candidate does not consume still have mass and must
-            // remain aboard throughout the burn. The scanner's StagePropellantMassTons field
-            // contains all loaded mass-bearing stage resources, not just this engine's mixture.
-            double carriedNonBurnResourceMass = Math.Max(0.0, snap.StagePropellantMassTons - r.PropellantMassTons);
-            r.DryMassTons = r.PayloadMassTons + r.OtherDryMassTons + r.EngineMassTons + carriedNonBurnResourceMass;
-            r.WetMassTons = r.DryMassTons + r.PropellantMassTons;
-            if (r.DryMassTons <= 0.0 || r.WetMassTons <= r.DryMassTons) return Fail(r, "No meaningful stage mass.");
+
+            // Physical wet mass of the selected stage only.  When KSP's stock stage
+            // simulator is available, use DeltaVStageInfo.stageMass directly so tank dry
+            // mass and tank resources cannot be counted once by KSP and again by our scanner.
+            // Only the candidate-vs-installed engine mass difference is applied.
+            if (snap.HasStockStageMasses && snap.StockStageMassTons > 0.0)
+            {
+                // Strip the currently installed engine mass out of every KSP stock mass
+                // boundary first, then add the candidate engine mass exactly once.
+                // StockCurrentEngineMassTons is sourced from the same DeltaVPartInfo model
+                // as these stock masses, avoiding Part.mass/module-mass mismatches.
+                double installedEngineMass = snap.StockCurrentEngineMassTons > 0.0
+                    ? snap.StockCurrentEngineMassTons
+                    : snap.CurrentEngineMassTons;
+
+                // If this candidate is exactly the same physical engine part type and count
+                // already installed in the selected stage, do not perform a remove/add
+                // substitution at all. The stock masses already contain that exact engine
+                // configuration, including any variant/module mass modifiers. Replacing it
+                // with prefab.mass can otherwise make the current-engine row look as if the
+                // engine were counted twice even though replacement-engine rows are correct.
+                if (IsExactInstalledEngineConfiguration(snap, engine, count))
+                {
+                    r.EngineMassTons = installedEngineMass;
+                    r.StageWetMassTons = snap.StockStageMassTons;
+                    r.StartMassTons = snap.StockStageStartMassTons;
+                    r.DryMassTons = snap.StockStageEndMassTons;
+                }
+                else
+                {
+                    double stageWithoutInstalledEngines = Math.Max(0.0, snap.StockStageMassTons - installedEngineMass);
+                    double startWithoutInstalledEngines = Math.Max(0.0, snap.StockStageStartMassTons - installedEngineMass);
+                    double endWithoutInstalledEngines = Math.Max(0.0, snap.StockStageEndMassTons - installedEngineMass);
+
+                    r.StageWetMassTons = stageWithoutInstalledEngines + r.EngineMassTons;
+                    r.StartMassTons = startWithoutInstalledEngines + r.EngineMassTons;
+                    r.DryMassTons = endWithoutInstalledEngines + r.EngineMassTons;
+                }
+                r.PropellantMassTons = scannedPropellantMass;
+            }
+            else
+            {
+                // Fallback for cases where KSP's stock stage simulator is not yet ready.
+                double carriedNonBurnResourceMass = Math.Max(0.0, snap.StagePropellantMassTons - r.PropellantMassTons);
+                r.DryMassTons = r.PayloadMassTons + r.OtherDryMassTons + r.EngineMassTons + carriedNonBurnResourceMass;
+                r.StartMassTons = r.DryMassTons + r.PropellantMassTons;
+            }
+
+            if (r.DryMassTons <= 0.0 || r.StartMassTons <= r.DryMassTons) return Fail(r, "No meaningful stage mass.");
 
             r.ThrustKn = engine.ThrustAtEnvironment(atmospheres, atmosphereTemperatureK, atmosphereDensityKgPerM3) * count;
-            double logMassRatio = Math.Log(r.WetMassTons / r.DryMassTons);
+            r.SeaLevelThrustKn = engine.SeaLevelThrustKn * count;
+            r.VacuumThrustKn = engine.MaxThrustVacuumKn * count;
+            double logMassRatio = Math.Log(r.StartMassTons / r.DryMassTons);
             r.AtmosphericDeltaV = r.Isp * StageSolver.StandardGravity * logMassRatio;
             r.VacuumDeltaV = engine.VacuumIsp * StageSolver.StandardGravity * logMassRatio;
-            r.InitialTwr = r.ThrustKn / (r.WetMassTons * gravity);
-            double vacuumThrust = engine.ThrustAtEnvironment(0.0, 288.15, 0.0) * count;
-            r.MaxTwr = vacuumThrust / (r.WetMassTons * gravity);
+            r.InitialTwr = r.ThrustKn / (r.StartMassTons * gravity);
+            r.MaxTwr = r.VacuumThrustKn / (r.StartMassTons * gravity);
             r.FinalTwr = r.ThrustKn / (r.DryMassTons * gravity);
-            double flow = r.ThrustKn / (r.Isp * StageSolver.StandardGravity);
-            r.BurnTimeSeconds = flow > 0.0 ? r.PropellantMassTons / flow : 0.0;
+            // Burn rate is based on vacuum thrust/vacuum Isp and therefore does not
+            // change with the selected planet or altitude.
+            r.BurnTimeSeconds = StageSolver.CalculateBurnTimeSeconds(
+                r.PropellantMassTons, r.VacuumThrustKn, engine.VacuumIsp);
             r.IsValid = r.ThrustKn > 0.0;
             return r;
+        }
+
+
+        private static bool IsExactInstalledEngineConfiguration(ExistingStageSnapshot snap, EngineCandidate engine, int count)
+        {
+            if (snap == null || engine == null || count <= 0 || snap.CurrentEnginePartNames == null) return false;
+            if (snap.CurrentEnginePartNames.Count != count || count == 0) return false;
+
+            string candidatePartName = engine.PartName ?? string.Empty;
+            int colon = candidatePartName.IndexOf(':');
+            if (colon >= 0) candidatePartName = candidatePartName.Substring(0, colon);
+            if (candidatePartName.Length == 0) return false;
+
+            return snap.CurrentEnginePartNames.All(name =>
+                !string.IsNullOrEmpty(name) &&
+                string.Equals(name, candidatePartName, StringComparison.OrdinalIgnoreCase));
         }
 
         private static StageSolution Fail(StageSolution r, string why) { r.IsValid = false; r.FailureReason = why; return r; }

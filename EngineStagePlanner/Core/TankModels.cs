@@ -8,6 +8,7 @@ namespace EngineStagePlanner.Core
         public string ResourceName { get; set; }
         public double Units { get; set; }
         public double DensityTonsPerUnit { get; set; }
+        public double LitersPerUnit { get; set; }
     }
 
     public sealed class TankCandidate
@@ -30,7 +31,12 @@ namespace EngineStagePlanner.Core
 
         public string CapacitySummary
         {
-            get { return string.Join(", ", Provided.Select(p => p.ResourceName + " " + p.Units.ToString("0.###")).ToArray()); }
+            get
+            {
+                return string.Join(", ", Provided.Select(p =>
+                    p.ResourceName + " " + p.Units.ToString("0.###") +
+                    (p.VolumeLiters > 0.0 ? " (" + p.VolumeLiters.ToString("0.###") + " L)" : string.Empty)).ToArray());
+            }
         }
     }
 }

@@ -5,17 +5,8 @@ using UnityEngine;
 
 namespace EngineStagePlanner
 {
-    [KSPAddon(KSPAddon.Startup.MainMenu, true)]
-    public sealed class EngineStagePlannerToolbarRegistration : MonoBehaviour
-    {
-        private void Start()
-        {
-            ToolbarControl.RegisterMod(EngineStagePlannerAddon.MODID, EngineStagePlannerAddon.MODNAME);
-        }
-    }
-
     [KSPAddon(KSPAddon.Startup.EditorAny, false)]
-    public sealed class EngineStagePlannerAddon : MonoBehaviour
+    public sealed class EngineStagePlannerEditorAddon : MonoBehaviour
     {
         internal const string MODID = "EngineStagePlanner_NS";
         internal const string MODNAME = "Engine Stage Planner";
@@ -32,6 +23,19 @@ namespace EngineStagePlanner
             _lastVisible = !_window.Visible;
             SyncToolbarButton();
             Debug.Log("[EngineStagePlanner] Loaded");
+
+            GameEvents.onGameSceneLoadRequested.Add(onGameSceneLoadRequested);
+            GameEvents.onGameSceneSwitchRequested.Add(onGameSceneSwitchRequested);
+        }
+
+        void onGameSceneSwitchRequested(GameEvents.FromToAction<GameScenes, GameScenes> ed)
+        {
+            _window.Visible = _lastVisible = false;
+        }
+
+        void onGameSceneLoadRequested(GameScenes ed)
+        {
+            _window.Visible = _lastVisible = false;
         }
 
         private void CreateToolbarButton()
@@ -62,13 +66,7 @@ namespace EngineStagePlanner
 
         private void Update()
         {
-            // Alt+P remains available as a keyboard toggle in addition to ToolbarController.
-            if (_window != null &&
-                (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) &&
-                Input.GetKeyDown(KeyCode.P))
-            {
-                _window.Visible = !_window.Visible;
-            }
+            if (_window != null) _window.Update();
 
             SyncToolbarButton();
         }
@@ -90,6 +88,10 @@ namespace EngineStagePlanner
 
         private void OnDestroy()
         {
+            GameEvents.onGameSceneLoadRequested.Remove(onGameSceneLoadRequested);
+            GameEvents.onGameSceneSwitchRequested.Remove(onGameSceneSwitchRequested);
+
+            if (_window != null) _window.Dispose();
             if (_toolbarControl != null)
             {
                 _toolbarControl.OnDestroy();
@@ -99,3 +101,4 @@ namespace EngineStagePlanner
         }
     }
 }
+

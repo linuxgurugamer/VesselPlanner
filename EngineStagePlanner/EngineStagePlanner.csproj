@@ -50,6 +50,7 @@
     </Compile>
     <Compile Include="Core\TankModels.cs" />
     <Compile Include="Core\TankPlanner.cs" />
+    <Compile Include="EngineStagePlannerFlightAddon.cs" />
     <Compile Include="InstallChecker.cs" />
     <Compile Include="KSP\EditorPartSpawner.cs" />
     <Compile Include="KSP\TankDatabase.cs" />
@@ -61,10 +62,12 @@
     <Compile Include="KSP\EngineDatabase.cs" />
     <Compile Include="KSP\EditorStageScanner.cs" />
     <Compile Include="KSP\KspResourceVolume.cs" />
+    <Compile Include="ToolbarRegistration.cs" />
+    <Compile Include="UI\WindowSkin.cs" />
     <Compile Include="UI\PlannerWindow.cs" />
     <Compile Include="UI\FlightGraphWindow.cs" />
     <Compile Include="Flight\FlightSensorManager.cs" />
-    <Compile Include="EngineStagePlannerAddon.cs" />
+    <Compile Include="EngineStagePlannerEditorAddon.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="PluginData\Textures\icon_38.png" />

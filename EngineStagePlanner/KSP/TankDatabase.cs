@@ -22,7 +22,7 @@ namespace EngineStagePlanner.KSP
 
                     var resources = available.partPrefab.Resources
                         .Cast<PartResource>()
-                        .Where(r => r != null && r.info != null && r.maxAmount > 0.0 && r.info.density > 0.0)
+                        .Where(r => r != null && r.info != null && r.maxAmount > 0.0)
                         .ToList();
                     if (resources.Count == 0) continue;
 
@@ -40,7 +40,8 @@ namespace EngineStagePlanner.KSP
                         {
                             ResourceName = r.resourceName,
                             Units = r.maxAmount,
-                            DensityTonsPerUnit = r.info.density
+                            DensityTonsPerUnit = r.info.density,
+                            LitersPerUnit = KspResourceVolume.GetLitersPerUnit(r.info)
                         });
                     }
                     results.Add(tank);

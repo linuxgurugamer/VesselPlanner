@@ -30,8 +30,10 @@ namespace EngineStagePlanner.Core
         public double MassTons { get; set; }
         public double Cost { get; set; }
         public double MaxThrustVacuumKn { get; set; }
+        public double SeaLevelThrustKn { get; set; }
         public double VacuumIsp { get; set; }
         public double SeaLevelIsp { get; set; }
+        // Full-throttle mass flow of the Isp-bearing propellant mixture, in metric tons/sec.
         public Func<double, double> IspCurveEvaluator { get; set; }
         // Evaluates full-throttle engine thrust for the requested environment.
         // Arguments: pressure in atmospheres, temperature in K, density in kg/m^3.
@@ -101,6 +103,7 @@ namespace EngineStagePlanner.Core
     {
         public string ResourceName { get; set; }
         public double Ratio { get; set; }
+        public bool IgnoreForIsp { get; set; }
         public double Units { get; set; }
         public double MassTons { get; set; }
         public double VolumeLiters { get; set; }
@@ -113,13 +116,26 @@ namespace EngineStagePlanner.Core
         public bool IsValid { get; set; }
         public string FailureReason { get; set; }
         public double Isp { get; set; }
+        // Thrust at the currently selected planet/altitude.
         public double ThrustKn { get; set; }
+        // Static full-throttle thrust at 1 atm and in vacuum for this engine-count configuration.
+        public double SeaLevelThrustKn { get; set; }
+        public double VacuumThrustKn { get; set; }
         public double PayloadMassTons { get; set; }
         public double OtherDryMassTons { get; set; }
         public double EngineMassTons { get; set; }
         public double TankDryMassTons { get; set; }
         public double PropellantMassTons { get; set; }
-        public double WetMassTons { get; set; }
+        // Wet mass of the selected stage itself: stage hardware, candidate engines,
+        // tank structure and loaded stage resources/propellant. Payload/upper stages
+        // are deliberately excluded from this value.
+        public double StageWetMassTons { get; set; }
+        // Total vehicle mass at the beginning of this stage burn. This is the m0
+        // used for delta-v and initial TWR because the stage accelerates everything
+        // still attached above it as well as the stage itself.
+        public double StartMassTons { get; set; }
+        // Backward-compatible alias retained for older internal code.
+        public double WetMassTons { get { return StartMassTons; } set { StartMassTons = value; } }
         public double DryMassTons { get; set; }
         // AtmosphericDeltaV is calculated at the selected body's altitude/pressure.
         // VacuumDeltaV uses the same stage mass ratio with vacuum Isp.
@@ -153,16 +169,43 @@ namespace EngineStagePlanner.Core
         public double StagePropellantCapacityMassTons { get; set; }
         public double StageNonEngineDryMassTons { get; set; }
         public double CurrentEngineMassTons { get; set; }
+        // Current selected-stage engine dry mass as reported by KSP's own DeltaVPartInfo data.
+        // This is preferred when adjusting KSP stock stage/start/end masses for a replacement engine.
+        public double StockCurrentEngineMassTons { get; set; }
         public double StageTankCapacityUnits { get; set; }
         public double StageTankVolumeLiters { get; set; }
         public double PayloadAboveStageMassTons { get; set; }
+        // KSP stock delta-v simulator mass boundaries for this stage. When available,
+        // these are more accurate than inferring the retained/decoupled craft mass from
+        // inverseStage alone, especially with radial assemblies, fuel lines and mod parts.
+        public bool HasStockStageMasses { get; set; }
+        public double StockStageStartMassTons { get; set; }
+        public double StockStageEndMassTons { get; set; }
+        // KSP's own selected-stage mass, excluding retained payload/upper stages.
+        public double StockStageMassTons { get; set; }
+        public double StockStageDryMassTons { get; set; }
+        public double StockStageFuelMassTons { get; set; }
+        public double StockStageBurnTimeSeconds { get; set; }
         public double InferredTankDryRatio { get; set; }
         public List<ExistingResource> Resources { get; } = new List<ExistingResource>();
         public List<string> CurrentEngines { get; } = new List<string>();
+        // Base AvailablePart names for each physical engine part currently assigned to this stage.
+        // One entry per physical engine part; used to recognize the exact installed configuration.
+        public List<string> CurrentEnginePartNames { get; } = new List<string>();
+        public List<ExistingEngineInfo> CurrentEngineDetails { get; } = new List<ExistingEngineInfo>();
         public List<string> BulkheadProfiles { get; } = new List<string>();
         // Top-node sizes of engines currently assigned to this stage. These define the
         // stack interface used by the candidate-engine bulkhead-size filter.
         public List<int> TopNodeSizes { get; } = new List<int>();
+    }
+
+    public sealed class ExistingEngineInfo
+    {
+        public string DisplayName { get; set; }
+        public double SeaLevelThrustKn { get; set; }
+        public double VacuumThrustKn { get; set; }
+        public double SeaLevelIsp { get; set; }
+        public double VacuumIsp { get; set; }
     }
 
     public sealed class ExistingResource

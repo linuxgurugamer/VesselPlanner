@@ -70,7 +70,12 @@ namespace EngineStagePlanner.KSP
             var stageParts = new HashSet<Part>();
             foreach (Part enginePart in stageEngines)
             {
-                snap.CurrentEngines.Add(enginePart.partInfo != null ? enginePart.partInfo.title : enginePart.name);
+                string engineTitle = enginePart.partInfo != null ? enginePart.partInfo.title : enginePart.name;
+                string enginePartName = enginePart.partInfo != null ? enginePart.partInfo.name : enginePart.name;
+                snap.CurrentEngines.Add(engineTitle);
+                if (!string.IsNullOrEmpty(enginePartName))
+                    snap.CurrentEnginePartNames.Add(enginePartName);
+                AddCurrentEngineDetails(snap, enginePart, engineTitle);
                 AddTopNodeSize(snap.TopNodeSizes, enginePart);
                 AddBranchUntilDecoupler(enginePart, stageParts);
             }
@@ -88,8 +93,8 @@ namespace EngineStagePlanner.KSP
                 bool hasMassResource = false;
                 foreach (PartResource r in p.Resources)
                 {
-                    if (r == null || r.info == null || r.maxAmount <= 0.0 || r.info.density <= 0.0) continue;
-                    hasMassResource = true;
+                    if (r == null || r.info == null || r.maxAmount <= 0.0) continue;
+                    if (r.info.density > 0.0) hasMassResource = true;
                     var existing = snap.Resources.FirstOrDefault(x => string.Equals(x.Name, r.resourceName, StringComparison.OrdinalIgnoreCase));
                     if (existing == null)
                     {
@@ -98,7 +103,7 @@ namespace EngineStagePlanner.KSP
                     }
                     existing.Amount += r.amount;
                     existing.Capacity += r.maxAmount;
-                    double liters = r.maxAmount * KspResourceVolume.GetLitersPerUnit(r.resourceName);
+                    double liters = r.maxAmount * KspResourceVolume.GetLitersPerUnit(r.info);
                     existing.VolumeLiters += liters;
                     snap.StageTankCapacityUnits += r.maxAmount;
                     snap.StageTankVolumeLiters += liters;
@@ -128,7 +133,143 @@ namespace EngineStagePlanner.KSP
             snap.PayloadAboveStageMassTons = parts.Where(p => p != null && !stageParts.Contains(p) && p.inverseStage < stage)
                 .Sum(p => GetDryPartMass(p) + GetResourceMass(p));
 
+            // Prefer KSP's own stage mass boundaries when the stock delta-v simulator can
+            // provide them.  Its part/fuel-flow staging model correctly accounts for retained
+            // payload, radial assemblies, fuel lines/crossfeed and separation behavior that
+            // cannot be reconstructed reliably from inverseStage alone.
+            TryApplyStockStageMasses(snap, EditorLogic.fetch.ship, stage, stageEngines);
+
             return snap;
+        }
+
+        private static void TryApplyStockStageMasses(ExistingStageSnapshot snap, ShipConstruct ship, int stage, IEnumerable<Part> selectedEngineParts)
+        {
+            if (snap == null || ship == null) return;
+            try
+            {
+                // The editor ShipConstruct normally already owns the stock VesselDeltaV
+                // instance. Reuse it so we read the same completed simulation that drives
+                // KSP's staging delta-v display; only create one if the ship does not have it.
+                VesselDeltaV vesselDeltaV = ship.vesselDeltaV ?? VesselDeltaV.Create(ship);
+                if (vesselDeltaV == null) return;
+
+                DeltaVStageInfo info = vesselDeltaV.GetStage(stage);
+                if (info == null) return;
+
+                double start = info.startMass;
+                double end = info.endMass;
+                double stageMass = info.stageMass;
+                double stageDryMass = info.dryMass;
+                double stageFuelMass = info.fuelMass;
+
+                if (start <= 0.0 || end <= 0.0 || start <= end) return;
+
+                // Remove the engines from the SAME KSP stage model that supplied
+                // startMass/stageMass/endMass.  Using the planner's independently scanned
+                // engine set here can disagree with DeltaVStageInfo and leave the installed
+                // engine inside the stock mass before the candidate engine is added.
+                // DeltaVStageInfo.enginesInStage is authoritative for this stage.
+                // Count each physical engine part only once (important for multimode engines).
+                double stockCurrentEngineMass = 0.0;
+                var countedStockEngineParts = new HashSet<Part>();
+                if (info.enginesInStage != null)
+                {
+                    foreach (DeltaVEngineInfo engineInfo in info.enginesInStage)
+                    {
+                        if (engineInfo == null || engineInfo.partInfo == null || engineInfo.partInfo.part == null) continue;
+                        Part enginePart = engineInfo.partInfo.part;
+                        if (!countedStockEngineParts.Add(enginePart)) continue;
+                        stockCurrentEngineMass += Math.Max(0.0, engineInfo.partInfo.dryMass);
+                    }
+                }
+
+                // If KSP has not populated enginesInStage yet, fall back to matching the
+                // scanner's selected engine parts against KSP's DeltaVPartInfo list.
+                var selectedEngineSet = new HashSet<Part>((selectedEngineParts ?? Enumerable.Empty<Part>()).Where(p => p != null));
+                if (stockCurrentEngineMass <= 0.0 && selectedEngineSet.Count > 0 && vesselDeltaV.PartInfo != null)
+                {
+                    var countedEngineParts = new HashSet<Part>();
+                    foreach (DeltaVPartInfo partInfo in vesselDeltaV.PartInfo)
+                    {
+                        if (partInfo == null || partInfo.part == null) continue;
+                        if (!selectedEngineSet.Contains(partInfo.part) || !countedEngineParts.Add(partInfo.part)) continue;
+                        stockCurrentEngineMass += Math.Max(0.0, partInfo.dryMass);
+                    }
+                }
+
+                // Last-resort fallback if the stock DeltaV part data is not ready yet.
+                if (stockCurrentEngineMass <= 0.0 && selectedEngineSet.Count > 0)
+                    stockCurrentEngineMass = selectedEngineSet.Sum(GetDryPartMass);
+
+                snap.StockCurrentEngineMassTons = Math.Max(0.0, stockCurrentEngineMass);
+                if (snap.StockCurrentEngineMassTons > 0.0)
+                    snap.CurrentEngineMassTons = snap.StockCurrentEngineMassTons;
+
+                // DeltaVStageInfo already exposes the stage's own mass separately from the
+                // full vehicle start/end masses.  Use those values directly instead of
+                // reconstructing stage mass from the branch scanner.  The scanner still
+                // supplies resource names/capacities for candidate compatibility, but it
+                // no longer participates in the authoritative mass totals.
+                if (stageMass <= 0.0 && stageDryMass >= 0.0 && stageFuelMass >= 0.0)
+                    stageMass = stageDryMass + stageFuelMass;
+                if (stageDryMass <= 0.0 && stageMass > 0.0 && stageFuelMass >= 0.0)
+                    stageDryMass = Math.Max(0.0, stageMass - stageFuelMass);
+
+                snap.HasStockStageMasses = true;
+                snap.StockStageStartMassTons = start;
+                snap.StockStageEndMassTons = end;
+                snap.StockStageMassTons = Math.Max(0.0, stageMass);
+                snap.StockStageDryMassTons = Math.Max(0.0, stageDryMass);
+                snap.StockStageFuelMassTons = Math.Max(0.0, stageFuelMass);
+                snap.StockStageBurnTimeSeconds = Math.Max(0.0, info.stageBurnTime);
+
+                // Retained payload/upper-stage mass is the full start mass minus KSP's
+                // selected-stage mass.  This assigns each kilogram to exactly one side
+                // of the boundary and prevents tank structure/resources from appearing
+                // in both the stage and payload totals.
+                if (snap.StockStageMassTons > 0.0)
+                {
+                    double stockPayload = start - snap.StockStageMassTons;
+                    if (stockPayload >= 0.0 && !double.IsNaN(stockPayload) && !double.IsInfinity(stockPayload))
+                        snap.PayloadAboveStageMassTons = stockPayload;
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning("[EngineStagePlanner] Stock stage-mass lookup failed; using fallback scanner: " + ex.Message);
+            }
+        }
+
+        private static void AddCurrentEngineDetails(ExistingStageSnapshot snap, Part enginePart, string engineTitle)
+        {
+            if (snap == null || enginePart == null) return;
+            try
+            {
+                var modules = enginePart.FindModulesImplementing<ModuleEngines>();
+                if (modules == null || modules.Count == 0) return;
+
+                int moduleIndex = 0;
+                foreach (ModuleEngines engine in modules)
+                {
+                    if (engine == null || engine.maxThrust <= 0f) { moduleIndex++; continue; }
+                    double vacuumIsp = engine.atmosphereCurve != null ? engine.atmosphereCurve.Evaluate(0f) : 0.0;
+                    double seaLevelIsp = engine.atmosphereCurve != null ? engine.atmosphereCurve.Evaluate(1f) : 0.0;
+                    double thrustLimit = Math.Max(0.0, Math.Min(1.0, engine.thrustPercentage / 100.0));
+                    double vacuumThrust = EngineDatabase.GetConfiguredThrustKn(engine, 0.0, thrustLimit);
+                    double seaLevelThrust = EngineDatabase.GetConfiguredThrustKn(engine, 1.0, thrustLimit);
+
+                    snap.CurrentEngineDetails.Add(new ExistingEngineInfo
+                    {
+                        DisplayName = engineTitle + (modules.Count > 1 ? " [mode " + (moduleIndex + 1) + "]" : string.Empty),
+                        SeaLevelThrustKn = seaLevelThrust,
+                        VacuumThrustKn = vacuumThrust,
+                        SeaLevelIsp = seaLevelIsp,
+                        VacuumIsp = vacuumIsp
+                    });
+                    moduleIndex++;
+                }
+            }
+            catch { }
         }
 
         private static void AddTopNodeSize(List<int> output, Part part)

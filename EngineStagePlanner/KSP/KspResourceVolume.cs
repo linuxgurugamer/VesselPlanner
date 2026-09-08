@@ -1,25 +1,39 @@
 using System;
-using System.Collections.Generic;
 
 namespace EngineStagePlanner.KSP
 {
     internal static class KspResourceVolume
     {
-        // Stock LF/O tanks are conventionally treated as 5 L per resource unit.
-        // Unknown resources deliberately report 0 L; the UI still shows exact KSP units.
-        private static readonly Dictionary<string, double> LitersPerUnit = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "LiquidFuel", 5.0 },
-            { "Oxidizer", 5.0 },
-            { "SolidFuel", 5.0 },
-            { "MonoPropellant", 4.0 },
-            { "XenonGas", 0.1 }
-        };
-
+        /// <summary>
+        /// Returns the physical volume, in liters, represented by one KSP resource unit.
+        /// KSP 1.12 exposes this directly on PartResourceDefinition.volume, so no
+        /// stock-resource name table or mod-specific fallback is required.
+        /// </summary>
         public static double GetLitersPerUnit(string resourceName)
         {
-            double value;
-            return LitersPerUnit.TryGetValue(resourceName ?? string.Empty, out value) ? value : 0.0;
+            if (string.IsNullOrEmpty(resourceName) || PartResourceLibrary.Instance == null) return 0.0;
+            try
+            {
+                return GetLitersPerUnit(PartResourceLibrary.Instance.GetDefinition(resourceName));
+            }
+            catch
+            {
+                return 0.0;
+            }
+        }
+
+        public static double GetLitersPerUnit(PartResourceDefinition definition)
+        {
+            if (definition == null) return 0.0;
+            try
+            {
+                double volume = definition.volume;
+                return double.IsNaN(volume) || double.IsInfinity(volume) || volume <= 0.0 ? 0.0 : volume;
+            }
+            catch
+            {
+                return 0.0;
+            }
         }
     }
 }

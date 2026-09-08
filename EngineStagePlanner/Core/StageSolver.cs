@@ -23,15 +23,21 @@ namespace EngineStagePlanner.Core
             if (engineCount <= 0 || req.TargetDeltaV <= 0.0 || req.Gravity <= 0.0)
                 return Fail(result, "Invalid planning inputs.");
 
-            double isp = engine.IspAtPressure(req.Atmospheres);
+            // Planning geometry (fuel load, tank mass, wet/dry mass and burn time) is
+            // deliberately based on the engine's vacuum performance. Moving the altitude
+            // slider must only re-evaluate atmospheric performance; it must not redesign
+            // the stage. This keeps VacuumDeltaV and BurnTimeSeconds invariant with altitude.
+            double vacuumIsp = engine.VacuumIsp;
+            double atmosphericIsp = engine.IspAtPressure(req.Atmospheres);
             double thrust = engine.ThrustAtEnvironment(
                 req.Atmospheres, req.AtmosphereTemperatureK, req.AtmosphereDensityKgPerM3) * engineCount;
-            if (isp <= 0.0 || thrust <= 0.0)
+            if (vacuumIsp <= 0.0 || atmosphericIsp <= 0.0 || thrust <= 0.0)
                 return Fail(result, "Engine has no usable thrust/ISP in this environment.");
 
-            var ispProps = engine.Propellants.Where(p => !p.IgnoreForIsp && p.Ratio > 0.0 && p.DensityTonsPerUnit > 0.0).ToList();
+            var allProps = engine.Propellants.Where(p => p.Ratio > 0.0).ToList();
+            var ispProps = allProps.Where(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0).ToList();
             if (ispProps.Count == 0)
-                return Fail(result, "No mass-bearing propellants could be resolved.");
+                return Fail(result, "No mass-bearing propellants could be resolved for delta-v calculation.");
 
             double ratio = Math.Max(0.0, req.TankDryMassPerPropellantMass);
             double fixedDry = result.PayloadMassTons + result.OtherDryMassTons + result.EngineMassTons;
@@ -41,7 +47,9 @@ namespace EngineStagePlanner.Core
             {
                 double tankDry = propMass * ratio;
                 double dryMass = fixedDry + tankDry;
-                double massRatio = Math.Exp(req.TargetDeltaV / (isp * StandardGravity));
+                // Size the stage to the requested VACUUM delta-v. The atmospheric
+                // delta-v is then evaluated from the same fixed mass ratio.
+                double massRatio = Math.Exp(req.TargetDeltaV / (vacuumIsp * StandardGravity));
                 double nextPropMass = dryMass * (massRatio - 1.0);
 
                 if (double.IsNaN(nextPropMass) || double.IsInfinity(nextPropMass) || nextPropMass > 1e9)
@@ -55,25 +63,38 @@ namespace EngineStagePlanner.Core
                 propMass = nextPropMass;
             }
 
-            result.Isp = isp;
+            result.Isp = atmosphericIsp;
             result.ThrustKn = thrust;
+            result.SeaLevelThrustKn = engine.SeaLevelThrustKn * engineCount;
+            result.VacuumThrustKn = engine.MaxThrustVacuumKn * engineCount;
             result.PropellantMassTons = propMass;
             result.TankDryMassTons = propMass * ratio;
             result.DryMassTons = fixedDry + result.TankDryMassTons;
-            result.WetMassTons = result.DryMassTons + propMass;
-            double logMassRatio = Math.Log(result.WetMassTons / result.DryMassTons);
-            result.AtmosphericDeltaV = isp * StandardGravity * logMassRatio;
-            result.VacuumDeltaV = engine.VacuumIsp * StandardGravity * logMassRatio;
-            result.InitialTwr = thrust / (result.WetMassTons * req.Gravity);
-            double vacuumThrust = engine.ThrustAtEnvironment(0.0, 288.15, 0.0) * engineCount;
-            result.MaxTwr = vacuumThrust / (result.WetMassTons * req.Gravity);
+            // Stage wet mass excludes the payload/upper stages. Start mass includes
+            // everything the selected stage must accelerate at ignition.
+            result.StageWetMassTons = result.OtherDryMassTons
+                + result.EngineMassTons
+                + result.TankDryMassTons
+                + propMass;
+            result.StartMassTons = result.PayloadMassTons + result.StageWetMassTons;
+            double logMassRatio = Math.Log(result.StartMassTons / result.DryMassTons);
+            result.AtmosphericDeltaV = atmosphericIsp * StandardGravity * logMassRatio;
+            result.VacuumDeltaV = vacuumIsp * StandardGravity * logMassRatio;
+            result.InitialTwr = thrust / (result.StartMassTons * req.Gravity);
+            result.MaxTwr = result.VacuumThrustKn / (result.StartMassTons * req.Gravity);
             result.FinalTwr = thrust / (result.DryMassTons * req.Gravity);
 
-            // thrust kN / (Isp * g0) = metric tons/sec because 1 kN = 1 t*m/s^2.
-            double massFlowTonsPerSecond = thrust / (isp * StandardGravity);
-            result.BurnTimeSeconds = massFlowTonsPerSecond > 0.0 ? propMass / massFlowTonsPerSecond : 0.0;
+            // Burn time is intentionally independent of selected body/altitude.
+            // Use the vacuum engine rating to calculate mass flow:
+            //   mdot = F / (Isp * g0)
+            // and therefore:
+            //   t = mPropellant * Isp * g0 / F
+            // With thrust in kN and mass in metric tons, the numerical units cancel
+            // consistently (1 kN / g0 corresponds to metric tons/sec here).
+            result.BurnTimeSeconds = CalculateBurnTimeSeconds(
+                propMass, result.VacuumThrustKn, vacuumIsp);
 
-            BuildPropellantRequirements(result, ispProps, propMass);
+            BuildPropellantRequirements(result, allProps, propMass);
             result.TankVolumeLiters = result.Propellants.Sum(p => p.VolumeLiters);
 
             if (result.InitialTwr + 1e-9 < req.MinimumTwr)
@@ -83,21 +104,41 @@ namespace EngineStagePlanner.Core
             return result;
         }
 
-        private static void BuildPropellantRequirements(StageSolution result, IList<PropellantSpec> props, double totalMass)
-        {
-            // KSP propellant ratios are volumetric/resource-unit ratios, not mass ratios.
-            // Find scale s where sum(s * ratio_i * density_i) = requested propellant mass.
-            double massPerRatioUnit = props.Sum(p => p.Ratio * p.DensityTonsPerUnit);
-            if (massPerRatioUnit <= 0.0) return;
-            double scale = totalMass / massPerRatioUnit;
 
-            foreach (var p in props)
+        public static double CalculateBurnTimeSeconds(double propellantMassTons, double vacuumThrustKn, double vacuumIsp)
+        {
+            if (propellantMassTons <= 0.0 || vacuumThrustKn <= 0.0 || vacuumIsp <= 0.0)
+                return 0.0;
+
+            // mdot = F / (Isp * g0)
+            double massFlowTonsPerSecond = vacuumThrustKn / (vacuumIsp * StandardGravity);
+            if (massFlowTonsPerSecond <= 0.0 || double.IsNaN(massFlowTonsPerSecond) || double.IsInfinity(massFlowTonsPerSecond))
+                return 0.0;
+
+            // t = m / mdot = m * Isp * g0 / F
+            return (propellantMassTons * vacuumIsp * StandardGravity) / vacuumThrustKn;
+        }
+
+        private static void BuildPropellantRequirements(StageSolution result, IList<PropellantSpec> allProps, double totalMass)
+        {
+            // KSP engine propellant ratios are resource-unit ratios. Resources marked
+            // ignoreForIsp (for example intake/auxiliary resources) still belong to the
+            // engine's required resource set, but they do not participate in the mass
+            // flow used by the rocket-equation/Isp calculation.
+            double massPerRatioUnit = allProps
+                .Where(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0)
+                .Sum(p => p.Ratio * p.DensityTonsPerUnit);
+            if (massPerRatioUnit <= 0.0) return;
+
+            double scale = totalMass / massPerRatioUnit;
+            foreach (var p in allProps)
             {
                 double units = scale * p.Ratio;
                 result.Propellants.Add(new PropellantRequirement
                 {
                     ResourceName = p.ResourceName,
                     Ratio = p.Ratio,
+                    IgnoreForIsp = p.IgnoreForIsp,
                     Units = units,
                     MassTons = units * p.DensityTonsPerUnit,
                     VolumeLiters = p.LitersPerUnit > 0.0 ? units * p.LitersPerUnit : 0.0
