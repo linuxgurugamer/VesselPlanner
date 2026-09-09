@@ -1,5 +1,187 @@
 # Changelog
 
+## 0.6.30
+
+- Increased the maximum horizontal resize width of the main VesselPlanner editor window from **1280 px** to **1850 px**.
+- The minimum width remains **1150 px**, and the selected width continues to be remembered.
+
+## 0.6.29
+
+- Increased the synchronized candidate-engine column-header area from **28 px to 34 px**.
+- Made the main VesselPlanner editor window horizontally resizable with a **1150 px minimum** and **1280 px maximum** width.
+- Added a right-edge horizontal resize grip and persisted the selected main-window width in `VesselPlannerSettings.cfg`.
+- Updated README and manuals for the new window-width range and 34 px engine-list header area.
+
+## 0.6.28
+
+- Changed the lighter solid background used by the **Stage-By-Stage Plan** and **New/Edit Stage** windows to a shade value of **0.36** for stronger visual separation from the main planner.
+- Increased the synchronized candidate-engine column-header scroll area by **4 pixels** (24 px to 28 px) so the heading buttons have more vertical room.
+
+## 0.6.27
+
+- Limited the main VesselPlanner editor window to a maximum width of **1150 pixels**.
+- Synchronized the candidate-engine column-heading row with the engine list's horizontal scroll position, so the sortable heading buttons move with their columns.
+- Updated README and manuals for the maximum editor width and synchronized engine-list headings.
+
+## 0.6.26
+
+- Made the solid background of the **Stage-By-Stage Plan** window slightly lighter than the main VesselPlanner window.
+- Applied the same slightly lighter solid background to the **New Stage/Edit Stage** dialog for clearer visual separation.
+- Updated README and manuals to document the Stage-By-Stage window appearance.
+
+## 0.6.25
+
+- Stage-By-Stage Plan now opens left-aligned with the main VesselPlanner window, with its top edge directly below the main mode-button row.
+- New Stage now opens immediately to the right of the Stage-By-Stage Plan window, with the two windows top-aligned and adjacent.
+- Updated README and manuals for the new Stage-By-Stage window-placement behavior.
+
+## 0.6.24
+
+- Added `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`, a detailed Word tutorial covering the complete Stage-By-Stage planning workflow.
+- Updated `Manual/VesselPlanner-Manual.docx` to point users to the dedicated Stage-By-Stage tutorial.
+- Updated `README.md` to list both Word manuals included with the source package.
+
+## 0.6.23
+
+- Constrained the Stage-By-Stage New/Edit Stage **Add** decoupler-mass toggle to `GUILayout.Width(75)` so the control uses a fixed 75-pixel width.
+- Replaced the VesselPlanner ToolbarController icon with the newly supplied transparent checklist-and-graph artwork, updating both the 24 px and 38 px textures.
+
+## 0.6.22
+
+- Replaced the VesselPlanner ToolbarController icon with the new checklist-and-graph artwork supplied for this release.
+- Updated both the 24 px and 38 px toolbar textures used by the editor and flight toolbar buttons.
+
+## 0.6.21
+
+- Added `GameData/VesselPlanner/decouplerMasses.cfg` with configurable decoupler and stack-separator masses for `size0`, `size1`, `size1p5`, `size2`, `size3`, `size4`, `size5`, and `size6`, including the supplied Stock/SpaceY source labels.
+- Added a sortable/configurable **Mass t/eng** column to the candidate engine list, showing the dry mass of one engine part.
+- Added an **Add decoupler mass** option to the Stage-By-Stage New/Edit Stage dialog. When enabled, VesselPlanner adds the matching decoupler mass to the stage fixed dry mass; if several stack profiles are selected, the largest matching configured mass is used.
+- For Stage-By-Stage stages after the first, the New/Edit Stage dialog now shows **Previous stages mass** and uses that cumulative wet mass as the payload for the current stage. The cumulative value starts with the original plan payload and adds the full wet mass of every previously selected planned part plus stage cargo and optional decoupler mass.
+- New Stage now presets its bulkhead profile automatically. For the first stage, an existing editor vessel uses the open lower stack node (bottom, falling back to top). For later stages, the previous stage engine's bottom node is used, falling back to its top node.
+- Added `size1p5` (1.875 m) to the bulkhead-profile table so the Making History profile can be selected and can resolve the corresponding decoupler mass.
+
+## 0.6.20
+
+- When a new **Stage-By-Stage** plan is started, its starting/payload mass is initialized from the current editor vessel's full wet mass when a vessel is present. If the editor is empty, the default remains **5.0 t**. Existing plans with stages keep their saved mass.
+
+## 0.6.19
+
+- Replaced `Manual/VesselPlanner-Manual.docx` with the formatted VesselPlanner instruction manual, including the screenshot placeholders from the rewritten README.
+- Added a README note pointing users to the packaged Word manual.
+
+## 0.6.18
+
+- Rewrote `README.md` as a simple user instruction manual organized around installation, the three editor modes, Stage-By-Stage planning, settings, flight telemetry, exports, saved files, and troubleshooting.
+- Added clearly marked image placeholders throughout the README for future screenshots.
+
+## 0.6.17
+
+- Fixed New/Edit Stage Tab navigation so it no longer depends on the modal IMGUI wrapper delivering `KeyCode.Tab`. Tab/Shift+Tab are now polled from Unity's normal `Update()` loop, queued into the modal, and still accept IMGUI tab-character events as a fallback.
+
+## 0.6.16
+
+- Added keyboard Tab navigation to the Stage-By-Stage **New Stage** and **Edit Stage** modal. **Tab** moves through Target Δv, Minimum TWR, Max engines, and Additional Cargo Mass; **Shift+Tab** moves through the same fields in reverse.
+
+## 0.6.15
+
+- The selected tank is now displayed on its own line directly below the **Selected Engine** line instead of being appended to the engine header. The tank line remains hidden until a tank suggestion is selected.
+
+## 0.6.14
+
+- The **Selected Engine** pane header now shows the explicitly selected tank and the number of tank copies required, immediately after the selected engine information. The tank text is omitted until a tank suggestion is selected.
+
+## 0.6.13
+
+- After **Calculate** in the Stage-By-Stage **New Stage** or **Edit Stage** modal, the main VesselPlanner window is now brought to the front so the engine and tank choices are immediately accessible.
+
+## 0.6.12
+
+- After **Add Engine & Tanks** successfully adds the selected engine and tank to the open Stage-By-Stage stage, the **Stage-By-Stage Plan** window is brought to the front.
+- The `srf` (Surface attach) bulkhead profile is now shown at the top of the New/Edit Stage bulkhead-profile list, ahead of the numeric stack-size profiles.
+
+## 0.6.11
+
+- Added a **Bulkhead** column to the Planning **Tanks** list, showing each tank part's KSP `bulkheadProfiles` values. The column is sortable.
+- Stage-By-Stage bulkhead selection now uses KSP profile tokens rather than only numeric stack sizes, and **srf (Surface attach)** is available in the New/Edit Stage bulkhead-profile dropdown.
+- Tank suggestions now obey the Stage-By-Stage bulkhead-profile selection: a tank is listed only when at least one of its KSP bulkhead profiles matches one of the profiles selected for that stage.
+- Candidate engines use the same Stage-By-Stage profile selection, including `srf`; Analyze Existing keeps its existing top-node-size matching behavior.
+- Saved plans now store `BulkheadProfile` values. Older plans containing only `BulkheadSize` entries remain compatible and are translated to `sizeN` profiles when loaded; numeric size entries are also still written for downgrade compatibility.
+
+## 0.6.10
+
+- Tank suggestions in the Planning **Tanks** pane are now selectable by clicking their row; the selected tank is highlighted.
+- **Add Engine & Tanks** now uses the explicitly selected tank instead of automatically using the first tank suggestion. The button is disabled until both a Stage-By-Stage stage is open and a tank is selected.
+- Changing the selected engine, recalculating, simulating, or refreshing the part databases clears the tank selection so a stale tank cannot be reused accidentally.
+
+## 0.6.9
+
+- Widened all New/Edit Stage entry-field labels to the same width as **Additional Cargo Mass**, aligning Target Δv, Δv basis, Minimum TWR, Max engines, Additional Cargo Mass, and Bulkhead sizes in one consistent input column.
+
+## 0.6.8
+
+- The Stage-By-Stage **New Stage** dialog is now a true modal window, so it stays above the other GUI windows and blocks interaction with them until **Calculate** or **Cancel** closes it. The shared **Edit Stage** dialog uses the same modal behavior.
+- Renamed the New/Edit Stage field label from **Cargo mass (t)** to **Additional Cargo Mass**. The value is still stored and calculated as per-stage cargo mass in metric tons.
+
+## 0.6.7
+
+- Fixed the Stage-By-Stage solid-background rendering when its windows overlap the main planner. The plan, New/Edit Stage, and Load Plan windows now paint their opaque fill inside their own GUI window layer and then repaint the active KSP window skin over it, preventing the main planner from bleeding through even when the Stage-By-Stage window is above it.
+
+## 0.6.6
+
+- Renamed the mod from **EngineStagePlanner** to **VesselPlanner**. The project/assembly, namespaces, toolbar identifiers, GameData folder, version file, settings paths, build/deploy scripts, window titles, and documentation now use `VesselPlanner`.
+- To ease the rename, VesselPlanner reads the legacy `GameData/EngineStagePlanner/PluginData/EngineStagePlannerSettings.cfg`, saved plans, and flight maxima when the new VesselPlanner equivalents do not yet exist. New saves are written under `GameData/VesselPlanner`; the old default CSV path is translated to the new VesselPlanner default.
+- Stage-By-Stage windows are now drawn after the main editor planner/settings windows. When **Use solid backgrounds for all editor windows** is enabled, the plan, New/Edit Stage, and Load Plan windows therefore remain fully solid even where they overlap the main planner.
+- Added **Cargo mass (t)** to New Stage and Edit Stage in Stage-By-Stage mode. Cargo is stored per stage, shown in the stage summary, saved/loaded with plan files, and included as non-propellant dry mass in that stage's engine/tank solve. Existing plans without the new value load with zero cargo.
+
+## 0.6.5
+
+- Added a **Delete** button to each row of the Load Plan window. It takes two presses, the first arming that row, and removes the file only; the plan open in the window is left alone.
+- The Stage-By-Stage plan, stage and load windows now use the same solid background as the planner and its settings window, following the same Appearance setting.
+- **Stage-By-Stage** is now exclusive with **Planning** and **Analyze Existing**: picking it deselects the other two, and picking either of them leaves the mode, putting the plan window away and closing any stage being built. The plan itself is kept. Closing the plan window from its own × leaves the mode as well.
+- Widened the **Match stage bulkhead size** toggle from 190 to 250 pixels.
+
+## 0.6.4
+
+- `BulkheadProfiles.cfg` now names sizes 5 to 10 as 7.5, 10, 12.5, 15, 17.5 and 20 m instead of leaving them as placeholders.
+- The fallback table in code was updated to match, so a missing or unreadable config file gives the same names the shipped one does.
+
+## 0.6.3
+
+- **Finalize** now closes the planner window, leaves the plan window open as the build list, and saves the plan in its finalised state, so reloading it comes back finalised.
+- Loading a finalised plan closes the planner window too. An unfinished plan loads with the planner still available.
+- **Reopen** brings the planner window back.
+- Added a **Clear** button. It takes two presses, the first arming it, so a stray click cannot discard a plan.
+- The plan window is now drawn independently of the planner window rather than from inside it, which is what lets one close while the other stays open.
+
+## 0.6.2
+
+- Plans are now filed under the vessel name; the separate plan-name field is gone, so there is no second name to keep in step.
+- **New Stage** is disabled while the stage dialog is open, and so are the per-stage **Edit** buttons.
+- Added an **Edit** button to each stage. It reopens the dialog on that stage's requirements and recalculates it, keeping the parts already chosen for it.
+- The **Bulkhead** column is now sortable. It sorts on the node size itself rather than its label, so the diameters come out in order instead of alphabetically.
+- **Match stage bulkhead size** is hidden while a Stage-By-Stage stage is open, since the stage's own sizes replace it there; the sizes in use are shown in its place.
+- Bulkhead descriptions now come from `BulkheadProfiles.cfg` instead of being hard-coded, so a part pack can describe stack sizes this mod does not know about. The file ships with the stock sizes 0 to 4 described and entries through size10 for larger part packs to fill in; a PROFILE for the same size in another file replaces the entry here.
+- The bulkhead size selector in the stage dialog is a dropdown rather than a row of buttons, and lists whatever the config file defines.
+
+## 0.6.1
+
+- Fixed two CS0165 build errors in the New Stage dialog. The three inputs were parsed in one `&&` chain, so short circuiting left the later `out` parameters unassigned as far as the compiler was concerned; each is now parsed in its own statement.
+- **Finalize** is disabled until the plan has at least one stage.
+- The vessel name is now an entry field, seeded from the craft in the editor but owned by the plan thereafter, and it is what gets saved.
+- Added **Add Engine & Tanks** to the Selected Engine pane. It adds the selected engine and the tank at the top of the suggestion list to the open plan stage in one press, and is disabled unless a Stage-By-Stage stage is open.
+- Added a **Bulkhead** column to the candidate engine list, showing the stack diameter the engine's top node mates with. It can be switched off with the other columns in Settings.
+- The New Stage dialog can restrict candidate engines to chosen bulkhead sizes, which stands in for **Match stage bulkhead size** while that stage is open. A plan is built before the craft exists, so there is no stage bulkhead to match against; selecting no sizes considers them all.
+
+## 0.6.0
+
+- Added a **Stage-By-Stage** button, which opens a plan window holding the craft name, payload mass, starting body and a list of stages with the engines and tanks chosen for each.
+- **New Stage** prompts for target Δv (vacuum or atmospheric), minimum TWR and maximum engines. **Calculate** is disabled until all three are filled in, then loads them into the planner window and solves the stage.
+- While a stage is being built, the planner's **Add**, **Add Engine** and **Add Tank** buttons add the part and its quantity to that stage instead of placing it in the editor. Adding the same part twice accumulates into one line.
+- Each stage has a **Delete** button, and each part a **Remove** button, until the plan is finalised.
+- **Finalize** ends stage building: the New Stage button goes away and each part gains an **Add** button that places it in the editor. **Reopen** goes back to editing.
+- **Save** writes the plan to `PluginData/Plans`, and **Load** lists what is there and opens the selected one.
+- Deleting, loading and starting a stage are all deferred until both windows have been drawn, since each changes how many controls the windows draw.
+
 ## 0.5.62
 
 - Added a **Δv basis** selector to the Planning **Requirements** pane: **Vacuum** or **Atmosphere**. The target field is labelled to match, and the choice is saved as `TargetDeltaVBasis`.
@@ -73,7 +255,7 @@
 - Added an **Axis** column to the flight plot settings. Each sensor's button cycles Off, Left, and Right, marking that series' scale on the chosen edge of the graph so the plot shows what it is displaying.
 - Axis annotations name the series and print the top and bottom of the scale it was actually plotted against, in the series colour. Several series can share a side and stack.
 - Annotations are drawn into the graph texture itself, so they appear both on screen and in the PNG export.
-- The assignments are saved as `GraphAxisLeft` and `GraphAxisRight` in `EngineStagePlannerSettings.cfg`.
+- The assignments are saved as `GraphAxisLeft` and `GraphAxisRight` in `VesselPlannerSettings.cfg`.
 
 ## 0.5.51
 
@@ -98,14 +280,14 @@
 ## 0.5.48
 
 - Added a **Window skin** setting on the Settings > Appearance page: **KSP skin** (the default) or **Alternate skin**, which is Unity's stock GUI skin.
-- The choice applies to every Engine Stage Planner window, in the editor and in flight, and takes effect immediately.
+- The choice applies to every VesselPlanner window, in the editor and in flight, and takes effect immediately.
 - The stock Unity skin is captured at the main menu before anything assigns `HighLogic.Skin`, since Unity resets `GUI.skin` to its default at the start of each OnGUI.
 - Cached GUIStyles are copied from `GUI.skin`, so both windows now rebuild theirs when the setting changes.
-- Stored as `UseAltSkin` in `EngineStagePlannerSettings.cfg`. The flight windows read the key directly from that file, so the skin applies without the editor planner having been opened.
+- Stored as `UseAltSkin` in `VesselPlannerSettings.cfg`. The flight windows read the key directly from that file, so the skin applies without the editor planner having been opened.
 
 ## 0.5.47
 - Moved each addon section into it's own file
-- Renamed EngineStagePlannerAddon to ToolbarRegistration 
+- Renamed VesselPlannerAddon to ToolbarRegistration 
 - Made GUIStyles static
 - Moved initialization of GUIStyles into ToolbarRegistration
 
@@ -225,20 +407,20 @@
 - Added a persistent **PNG export folder** setting to the Flight Plot Settings window.
 - The PNG export folder defaults to `Screenshots`, resolved relative to the KSP root, so PNG files default to `KSP_ROOT/Screenshots`.
 - Relative PNG export paths are resolved under the KSP root; absolute paths are also accepted.
-- The PNG directory is saved with the other settings in `GameData/EngineStagePlanner/PluginData/EngineStagePlannerSettings.cfg` as `PngExportDirectory`.
+- The PNG directory is saved with the other settings in `GameData/VesselPlanner/PluginData/VesselPlannerSettings.cfg` as `PngExportDirectory`.
 - PNG export creates the configured directory automatically when needed; CSV and PNG export locations remain independently configurable.
 - Fixed the flight graph footer to show the CSV and PNG export paths separately instead of calling the obsolete `GetExportFolder()` helper.
 
 ## 0.5.27
 - Added a persistent **CSV export folder** setting to the Flight Plot Settings window.
-- The default setting is `EngineStagePlanner/PluginData/CSV`, resolved relative to `GameData`, so CSV files default to `GameData/EngineStagePlanner/PluginData/CSV`.
+- The default setting is `VesselPlanner/PluginData/CSV`, resolved relative to `GameData`, so CSV files default to `GameData/VesselPlanner/PluginData/CSV`.
 - Relative CSV export paths are resolved under `GameData`; absolute paths are also accepted.
-- The configured directory is saved in `GameData/EngineStagePlanner/PluginData/EngineStagePlannerSettings.cfg` as `CsvExportDirectory`.
-- CSV export creates the configured directory automatically when needed. PNG export remains under `Screenshots/EngineStagePlanner`.
+- The configured directory is saved in `GameData/VesselPlanner/PluginData/VesselPlannerSettings.cfg` as `CsvExportDirectory`.
+- CSV export creates the configured directory automatically when needed. PNG export remains under `Screenshots/VesselPlanner`.
 
 ## 0.5.26
 - Changed the default editor appearance so **Use solid backgrounds for all editor windows** is enabled when no saved setting exists.
-- Existing `EngineStagePlannerSettings.cfg` values are still honored, so users who previously saved the option as disabled keep their preference.
+- Existing `VesselPlannerSettings.cfg` values are still honored, so users who previously saved the option as disabled keep their preference.
 - The default applies to the editor planner and editor Settings window only; flight windows remain unchanged.
 
 ## 0.5.25
@@ -276,7 +458,7 @@
 - The solid-background option is disabled by default and does not change the Flight telemetry or Flight Plot Settings windows.
 
 ## 0.5.18
-- Removed the Alt+P keyboard shortcut for opening/toggling Engine Stage Planner in both the editor and flight scenes; window access now uses the ToolbarController button.
+- Removed the Alt+P keyboard shortcut for opening/toggling VesselPlanner in both the editor and flight scenes; window access now uses the ToolbarController button.
 - Reworked the Analyze Existing left column so **Simulation environment** is a separate pane at the top.
 - Moved the full Analyze Existing simulation-control block into that top pane, including Minimum TWR, TWR gravity, Max engines, engine-class/resource filters, **Simulate all engines**, and simulation status.
 - Kept the selected-stage diagnostics, current engines, and stage resources together in a separate **Existing stage** pane below the simulation controls.
@@ -287,16 +469,16 @@
 - Analyze Existing and Planning retain independent close-after-Add preferences.
 
 ## 0.5.16
-- Made the Engine Stage Planner Settings window draggable from any unused/background area of the window instead of only the title strip.
+- Made the VesselPlanner Settings window draggable from any unused/background area of the window instead of only the title strip.
 - Added a persistent Analyze Existing option to close the planner after an engine is successfully selected for editor placement.
 - The Analyze Existing close-after-Add option applies to both candidate-row **Add** and selected-result **Add Engine** and does not close the planner when part selection fails.
 
 ## 0.5.15
 - Simplified the Planning-mode top row by removing **Pick Stage**, **Craft max**, and **Craft wet** while leaving those Analyze Existing aids available where applicable.
-- Added the Engine Stage Planner **Settings** window.
+- Added the VesselPlanner **Settings** window.
 - Added per-column visibility controls for the candidate engine list, including Show All / Hide All controls.
 - Added per-line/section visibility controls for informational content in the Analyze Existing left pane, including craft/stage mass diagnostics, burn information, tank data, current engines, and stage resources.
-- Planner UI settings are persisted in `GameData/EngineStagePlanner/PluginData/EngineStagePlannerSettings.cfg`.
+- Planner UI settings are persisted in `GameData/VesselPlanner/PluginData/VesselPlannerSettings.cfg`.
 
 ## 0.5.14
 - Analyze Existing stage selection is capped at the vessel's current maximum stage; typed values and the `+` control cannot advance past `EditorStageScanner.MaxStage`.
@@ -427,7 +609,7 @@
 - Changed the Flight telemetry default delay between samples from 0.25 seconds to **1.0 second**.
 - **Start at Launch** is now disabled once the active vessel has left `PRELAUNCH` (and while plotting is already active). It becomes available again after a revert/reload that returns the vessel to PRELAUNCH.
 - Added persistent per-vessel maximum tracking for every recorded telemetry source except ASL/surface altitude. Maxima are updated from all available sources while plotting, even if a source is not currently selected for display.
-- Per-vessel maxima are keyed by save name plus vessel/craft name and stored in `GameData/EngineStagePlanner/PluginData/FlightSensorMaxima.tsv`, so they survive reverts, scene reloads, and repeated launches.
+- Per-vessel maxima are keyed by save name plus vessel/craft name and stored in `GameData/VesselPlanner/PluginData/FlightSensorMaxima.tsv`, so they survive reverts, scene reloads, and repeated launches.
 - Resource and `ModuleEnviroSensor` maxima are persisted along with built-in flight sensors. Environment-sensor keys no longer depend on transient `flightID`, allowing their maxima to survive reverts.
 - Non-altitude graph series now use the vessel's recorded historical maximum as the top of their independent Y scale. The lower bound continues to follow the visible data. Altitude retains its separate configurable/body-default chart top.
 - Resetting plot samples or starting a new launch does not clear the vessel's historical maxima.
@@ -442,7 +624,7 @@
 - Fixed **Pick Part** so the stock editor no longer grabs/detaches the clicked part and its attached branch.
 - The picker now keeps its KSP input lock active through the entire mouse-down frame and releases it only after the left mouse button is released.
 - While Pick Part is armed, the stock `EditorLogic` behaviour is temporarily disabled as an additional guard; its previous enabled state is restored on pick, cancel, window close, or addon unload.
-- This addresses the KSP update-order race where Engine Stage Planner handled the click before stock `EditorLogic`, then released the lock soon enough for stock EditorLogic to process the same click.
+- This addresses the KSP update-order race where VesselPlanner handled the click before stock `EditorLogic`, then released the lock soon enough for stock EditorLogic to process the same click.
 
 ## 0.4.5
 - Fixed KSP 1.12 compile errors in the **Pick Part** stage selector.
@@ -486,7 +668,7 @@
 - Added dynamic vessel-resource sources and stock `ModuleEnviroSensor` output sources.
 - Added a ClickThroughBlocker-protected, resizable flight graph window with Start/Stop, Reset, Settings, CSV export, and PNG export.
 - Added a sensor Settings window with grouped toggles for Flight data, Ship resources, and Sensor outputs, plus All/None group controls and an adjustable sample interval.
-- CSV exports selected plotted series with elapsed time and universal time; PNG exports the current graph. Exports are written to `Screenshots/EngineStagePlanner`.
+- CSV exports selected plotted series with elapsed time and universal time; PNG exports the current graph. Exports are written to `Screenshots/VesselPlanner`.
 
 ## 0.3.10
 - Added sortable **Max TWR** to Candidates. Max TWR uses the engine's vacuum thrust with the candidate wet mass and the selected body's surface gravity.
@@ -508,7 +690,7 @@
 
 ## 0.3.8
 - Engine discovery now honors `KSP.UI.Screens.EditorPartList.Instance.ExcludeFilters` before scanning for engine modules.
-- Third-party mods that hide/filter parts through the editor exclusion-filter pipeline can now remove those engines from Engine Stage Planner candidates.
+- Third-party mods that hide/filter parts through the editor exclusion-filter pipeline can now remove those engines from VesselPlanner candidates.
 - The currently selected stock editor category is intentionally not applied, so planner candidates are not restricted by whichever part category is open.
 - Editor exclusion filters are re-evaluated whenever Planning or Analyze Existing recalculates, allowing dynamic filter changes to be picked up.
 

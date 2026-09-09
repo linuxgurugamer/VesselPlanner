@@ -23,12 +23,12 @@ rem    but not always
 rem LICENSE is the license file
 rem README is the readme file
 
-set GAMEDIR=EngineStagePlanner
+set GAMEDIR=VesselPlanner
 set GAMEDATA="GameData\"
 set VERSIONFILE=%GAMEDIR%.version
 set LICENSE=License.md
 set README=README.md
-set MANUAL=EngineStagePlanner.pdf
+set MANUAL=VesselPlanner-Manual.md
 
 set RELEASEDIR=d:\Users\jbb\release
 set ZIP="d:\Program Files\7-zip\7z.exe"
@@ -40,7 +40,7 @@ copy /Y %VERSIONFILE% %GAMEDATA%\%GAMEDIR%
 
 if "%LICENSE%" NEQ "" copy /y  %LICENSE% %GAMEDATA%\%GAMEDIR%
 if "%README%" NEQ "" copy /Y %README% %GAMEDATA%\%GAMEDIR%
-if "%MANUAL%" NEQ "" copy /Y Manual\%MANUAL% %GAMEDATA%\%GAMEDIR%
+if "%MANUAL%" NEQ "" copy /Y %MANUAL% %GAMEDATA%\%GAMEDIR%
 
 rem Get Version info
 
