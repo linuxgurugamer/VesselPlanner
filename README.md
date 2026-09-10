@@ -2,7 +2,7 @@
 
 VesselPlanner is a planning and telemetry mod for **Kerbal Space Program 1.12.x**. It helps you analyze an existing stage, design a future stage, build a vessel one stage at a time, and record flight telemetry.
 
-A formatted Word version of this instruction manual is included at `Manual/VesselPlanner-Manual.docx`.
+An illustrated Word version of this instruction manual, including UI screenshots, is included at `Manual/VesselPlanner-Manual.docx`.
 
 A detailed Stage-By-Stage walkthrough is included at `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`.
 
@@ -415,7 +415,7 @@ Appearance options include:
 - **KSP skin** or **Alternate skin**
 - **Use solid backgrounds for all editor windows**
 
-Solid backgrounds are enabled by default for new configurations. The setting applies to the main editor planner, Settings window, and Stage-By-Stage windows.
+Solid backgrounds are enabled by default for new configurations. The setting applies to the main editor planner, Settings window, and Stage-By-Stage windows. Flight windows are controlled separately from Flight Settings.
 
 ---
 
@@ -426,6 +426,8 @@ Solid backgrounds are enabled by default for new configurations. The setting app
 Click the VesselPlanner toolbar button while in Flight.
 
 > **[IMAGE PLACEHOLDER: Flight telemetry graph during ascent]**
+
+The Flight Data window has a fixed height and is horizontally resizable from the grab handle centered on its right edge. Drag the handle left or right to change only the window width; vertical resizing is disabled. The separate Flight Plot Settings window keeps its normal two-axis resize handle. The graph vertical grid lines keep fixed horizontal positions while the Flight Data window is resized; widening the window adds new grid lines only on the right, and narrowing removes only lines that no longer fit. The vertical grid uses fixed spacing, and the **Time labels** setting can place elapsed-time labels on **Every line**, **Every other**, or **Every third** vertical grid line. The default is **Every third**. Labels stay centered on their selected fixed grid positions; resizing only reveals or removes positions at the right edge.
 
 ### Starting a recording
 
@@ -481,7 +483,11 @@ Open **Settings** from the flight graph.
 
 > **[IMAGE PLACEHOLDER: Flight Settings window showing Plot, Sensor, Max, and Units columns]**
 
-You can choose which flight data, resources, and sensor values are plotted.
+You can choose which flight data, resources, and sensor values are plotted. Available vessel resources and sensor outputs are refreshed automatically; there is no separate manual refresh button.
+
+Use **Time labels** to choose **Every line**, **Every other**, or **Every third**. The setting is saved as `ElapsedTimeLabelGridInterval` in `VesselPlannerSettings.cfg`; **Every third** is the default.
+
+Enable **Use solid background for Flight Data window** to make the flight graph window opaque while keeping the selected KSP/alternate skin, title, and border styling. The opaque underlay is drawn behind the single KSP window, avoiding a duplicate-window flicker during resizing. This setting is saved in `VesselPlannerSettings.cfg` and is enabled by default for new configurations; an existing saved value is preserved.
 
 ### CSV export
 
@@ -598,6 +604,11 @@ In Stage-By-Stage mode, select a tank row first. The combined button requires bo
 Plans created before cargo support load with **Additional Cargo Mass = 0**.
 
 ---
+
+
+## Source build configuration
+
+The repository `jenkins.txt` is configured for VesselPlanner release builds. It packages `VesselPlanner.version`, `License.md`, `README.md`, and the `Manual` folder under `GameData/VesselPlanner`.
 
 ## 14. License
 

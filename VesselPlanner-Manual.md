@@ -239,7 +239,7 @@ Its own independent "close planner after Add / Add Engine / Add Tank" option.
 
 ### Appearance page
 
-**Use solid backgrounds for all editor windows** gives the planner and the editor Settings window an opaque dark underlay while keeping normal KSP borders and title styling. Off by default. It does not affect flight windows.
+**Use solid backgrounds for all editor windows** gives the planner and the editor Settings window an opaque dark underlay while keeping normal KSP borders and title styling. Off by default. Flight windows use their own separate Flight Settings option.
 
 ---
 
@@ -291,14 +291,20 @@ The New/Edit Stage dialog also has an **Add decoupler mass** toggle. When enable
 
 ## Flight settings
 
-Open **Settings** from the graph to choose series. Flight data, resources, and sensors are grouped separately, each with All/None controls. The table shows **Plot**, **Sensor**, **Max**, and **Units**. The main plotted list also shows **Current** and **Max** per series.
+The Flight Data window has a fixed height and is horizontally resizable from the grab handle centered on its right edge. Drag the handle left or right to change only the window width. The handle keeps ownership of the mouse for the entire resize so the window itself does not jump or drift during the drag. Vertical resizing of the Flight Data window is disabled; the separate Flight Plot Settings window remains resizable in both directions. The graph vertical grid lines keep fixed horizontal positions during resizing. Expanding the graph adds additional grid lines only on the right; contracting it removes only grid lines that no longer fit. The vertical grid keeps fixed spacing. The **Time labels** setting can place elapsed-time labels on **Every line**, **Every other**, or **Every third** vertical grid line; **Every third** is the default. Labels remain centered on their selected fixed grid positions, including positions near the minimum-width boundary.
+
+Open **Settings** from the graph to choose series. Flight data, resources, and sensors are grouped separately, each with All/None controls. The table shows **Plot**, **Sensor**, **Max**, and **Units**. The main plotted list also shows **Current** and **Max** per series. Available vessel resources and sensor outputs refresh automatically; the manual **Refresh available resources/sensors** button has been removed.
+
+Use **Time labels** to choose **Every line**, **Every other**, or **Every third** vertical grid line. The choice is saved in `VesselPlannerSettings.cfg` as `ElapsedTimeLabelGridInterval`; **Every third** is the default.
+
+Enable **Use solid background for Flight Data window** to give the flight graph an opaque dark background while preserving the active KSP/alternate window skin, title, and border. The opaque background is drawn behind the single Flight Data window so resizing does not produce a flickering duplicate/ghost window. The setting is saved in `VesselPlannerSettings.cfg` as `SolidFlightWindowBackground` and is enabled by default for new configurations; an existing saved value is preserved.
 
 > **[IMAGE PLACEHOLDER: `images/flight-settings.png` — the flight Settings series selection table]**
 
 ### How the graph scales
 
 - The graph fills left to right with fixed horizontal sample spacing. Once it hits the right edge, the window scrolls and old data moves left.
-- Elapsed time since plotting started is labelled along the bottom as `m:ss`, or `h:mm:ss` on long runs.
+- Elapsed time since plotting started is labelled along the bottom as `m:ss`, or `h:mm:ss` on long runs. The time labels and vertical grid lines keep fixed horizontal positions when the graph width changes; extra positions are added only on the right as space becomes available. **Time labels** can be shown on every vertical line, every other line, or every third line; every third is the default.
 - Stage activations appear as orange dashed vertical lines labelled `Stage N`. They scroll with the data and are cleared by Reset or Start at Launch.
 - **Altitude** series use a configurable **Altitude chart top** with a zero baseline. By default that's the launch body's `atmosphereDepth`, or 10% of body diameter for an airless body. Altitude intentionally stores no Max value because this setting controls its scale.
 - **Every other series** scales to a per-vessel historical maximum recorded across all launches and reverts in the current save. The lower bound follows currently visible data, so series with wildly different units can share one graph.
@@ -396,6 +402,16 @@ For unusual modded fuel-flow systems, use **Planning** with a manually entered p
 | 0.5.13 | Burn duration computed from propellant the candidate engine can actually use |
 | 0.5.14–0.5.19 | Stage clamping in Analyze Existing; wider mass/thrust columns; column and info-line visibility settings; persistent draggable Settings; per-mode close-after-Add; Alt+P removed; Simulation environment split into its own pane; Appearance opaque-window option |
 | 0.5.25 | Corrected the scene-switch callback signature to `GameEvents.FromToAction<GameScenes, GameScenes>` |
+| 0.6.43 | Added selectable time-label frequency: every vertical grid line, every other line, or every third line |
+| 0.6.42 | Removed the manual resource/sensor refresh button and corrected elapsed-time labels so every interval stays exactly three grid columns apart |
+| 0.6.41 | Every third fixed vertical Flight Data grid line now aligns with an elapsed-time marker; resizing still only adds or removes positions on the right |
+| 0.6.40 | Flight Data vertical grid lines now stay at fixed horizontal positions during horizontal resizing; wider graphs add lines only on the right |
+| 0.6.36 | Flight Data window now resizes horizontally only from a centered right-edge grab handle; its height is fixed |
+| 0.6.35 | Solid Flight Data background now renders behind the single real window, eliminating resize-time duplicate-window flicker |
+| 0.6.34 | Flight Data resize grip no longer hands the drag to the window; bottom-docked windows remain bottom-aligned after resizing; solid Flight Data background now defaults on |
+| 0.6.33 | Replaced the Word instruction manual with the illustrated screenshot-enhanced edition and documented the current Flight Data solid-background setting |
+| 0.6.32 | Added a persistent solid-background option for the Flight Data window in Flight Plot Settings |
+| 0.6.31 | Updated the repository Jenkins/build configuration for VesselPlanner release packaging |
 | 0.6.30 | Main editor window maximum horizontal resize width increased to 1850 px (minimum remains 1150 px) |
 | 0.6.29 | Main editor window horizontally resizable from 1150–1280 px; engine-list header area increased to 34 px |
 | 0.6.17 | Fixed New/Edit Stage Tab navigation by polling Tab/Shift+Tab outside the modal IMGUI event stream |

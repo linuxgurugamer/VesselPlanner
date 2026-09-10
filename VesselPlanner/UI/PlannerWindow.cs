@@ -476,14 +476,14 @@ namespace VesselPlanner.UI
                 ReleaseAbandonedSplitterDrag();
                 ReleaseAbandonedMainWindowWidthDrag();
                 _window.width = Mathf.Clamp(_window.width, MinWindowWidth, MaxWindowWidth);
-                DrawSolidEditorWindowBackground(_window);
+                //DrawSolidEditorWindowBackground(_window);
                 // Width is controlled explicitly by the right-edge resize grip.  Fixing the
                 // GUILayout width prevents child controls from growing the outer window.
-                _window = ClickThruBlocker.GUILayoutWindow(19041968, _window, DrawWindow, "VesselPlanner", GUILayout.Width(_window.width), GUILayout.MinHeight(MinWindowHeight));
+                _window = ClickThruBlocker.GUILayoutWindow(19041968, _window, DrawWindow, "VesselPlanner", ToolbarRegistration.winDarker, GUILayout.Width(_window.width), GUILayout.MinHeight(MinWindowHeight));
                 if (_settingsVisible)
                 {
-                    DrawSolidEditorWindowBackground(_settingsWindow);
-                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", GUILayout.Width(600), GUILayout.Height(680));
+                    //DrawSolidEditorWindowBackground(_settingsWindow);
+                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", ToolbarRegistration.winDarker, GUILayout.Width(600), GUILayout.Height(680));
                 }
                 ApplyPendingSplitterDrag();
                 ApplyPendingMainWindowWidthResize();
@@ -2058,7 +2058,9 @@ namespace VesselPlanner.UI
             // coordinates.  It therefore stays attached to the body button regardless of the
             // planner's screen position, but still sits outside the GUILayout flow so the
             // controls below it never move.
+#if false
             DrawSolidEditorWindowBackground(_planetDropdownWindowRect);
+#endif
             GUI.Box(_planetDropdownWindowRect, GUIContent.none);
 
             float contentHeight = PlanetButtonHeight * Math.Max(1, _bodies.Count);
@@ -2650,47 +2652,11 @@ namespace VesselPlanner.UI
             }
         }
 
-
-        // Exposed so the Stage-By-Stage windows get the same treatment as the planner's own.
-        internal void DrawSolidBackground(Rect rect, bool lighter = false)
-        {
-            DrawSolidEditorWindowBackground(rect, lighter);
-        }
-
         // A free-standing GUI.DrawTexture outside a GUI.Window can still end up below another
         // Unity GUI window even when it is issued later in OnGUI. Stage-By-Stage uses this
         // helper from inside each window callback so the opaque fill participates in that
         // window's own draw layer. The normal KSP window style is then repainted on top to
         // retain the title, border and skin artwork.
-        internal void DrawSolidWindowOverlay(Rect localRect, string title, bool lighter = false)
-        {
-            if (!_uiSettings.SolidEditorWindowBackgrounds) return;
-
-            float shade = lighter ? 0.36f : 0.12f;
-            Color oldColor = GUI.color;
-            GUI.color = new Color(shade, shade, shade, 1f);
-            GUI.DrawTexture(localRect, Texture2D.whiteTexture);
-            GUI.color = oldColor;
-
-            GUI.Box(localRect, title ?? string.Empty, GUI.skin.window);
-        }
-
-        private void DrawSolidEditorWindowBackground(Rect rect, bool lighter = false)
-        {
-            if (!_uiSettings.SolidEditorWindowBackgrounds) return;
-
-            // Draw an opaque dark underlay before the stock KSP window style. This
-            // preserves the KSP border/title artwork while removing the normal
-            // translucent see-through background from every editor planner window.
-            // Stage-By-Stage and New Stage can request a lighter shade so they
-            // remain visually distinct from the main planner without changing the skin.
-            float shade = lighter ? 0.36f : 0.12f;
-            Color oldColor = GUI.color;
-            GUI.color = new Color(shade, shade, shade, 1f);
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = oldColor;
-        }
-
 
         private void SortHeader(string text, float width, SolutionSortColumn column)
         {

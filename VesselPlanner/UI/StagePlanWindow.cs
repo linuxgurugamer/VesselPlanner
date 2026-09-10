@@ -209,8 +209,8 @@ namespace VesselPlanner.UI
         {
             if (!Visible) return;
 
-            _planner.DrawSolidBackground(_window, true);
-            _window = ClickThruBlocker.GUILayoutWindow(19041970, _window, DrawPlanWindow, "Stage-By-Stage Plan",
+            // _planner.DrawSolidBackground(_window, true);
+            _window = ClickThruBlocker.GUILayoutWindow(19041970, _window, DrawPlanWindow, "Stage-By-Stage Plan", ToolbarRegistration.winLighter,
                 GUILayout.MinWidth(480f), GUILayout.MinHeight(420f));
 
             if (_newStageVisible)
@@ -223,15 +223,15 @@ namespace VesselPlanner.UI
                 // protection as well.  The height grows only while the bulkhead list is open.
                 _newStageWindow.width = 400f;
                 _newStageWindow.height = _bulkheadDropdownOpen ? 500f : 365f;
-                _planner.DrawSolidBackground(_newStageWindow, true);
+                //_planner.DrawSolidBackground(_newStageWindow, true);
                 _newStageWindow = ClickThruBlocker.GUIModalWindow(19041971, _newStageWindow, DrawNewStageWindow,
-                    stageDialogTitle, GUI.skin.window);
+                    stageDialogTitle /*, ToolbarRegistration.winLighter */ , GUI.skin.window);
             }
 
             if (_loadVisible)
             {
-                _planner.DrawSolidBackground(_loadWindow);
-                _loadWindow = ClickThruBlocker.GUILayoutWindow(19041972, _loadWindow, DrawLoadWindow, "Load Plan",
+                // _planner.DrawSolidBackground(_loadWindow);
+                _loadWindow = ClickThruBlocker.GUILayoutWindow(19041972, _loadWindow, DrawLoadWindow, "Load Plan", ToolbarRegistration.winDarker,
                     GUILayout.Width(360f), GUILayout.Height(380f));
             }
 
@@ -339,7 +339,7 @@ namespace VesselPlanner.UI
             // inside the window callback guarantees the solid fill is in the same GUI/window
             // layer as the Stage-By-Stage window itself, so an overlapping planner window
             // cannot bleed through it.
-            _planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _window.width, _window.height), "Stage-By-Stage Plan", true);
+            //_planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _window.width, _window.height), "Stage-By-Stage Plan", true);
 
             // Seeded from the craft in the editor the first time the window is opened, then
             // owned by the field so a plan can be named independently of the craft.
@@ -521,7 +521,7 @@ namespace VesselPlanner.UI
         private void DrawNewStageWindow(int id)
         {
             string title = _editingStageIndex >= 0 ? "Edit Stage " + (_editingStageIndex + 1) : "New Stage";
-            _planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _newStageWindow.width, _newStageWindow.height), title, true);
+            //_planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _newStageWindow.width, _newStageWindow.height), title, true);
 
             // KSP/Unity can deliver Tab either as KeyCode.Tab or only as a '\t' character
             // through a modal IMGUI window. Capture it before any TextField can consume the
@@ -717,7 +717,7 @@ namespace VesselPlanner.UI
 
         private void DrawLoadWindow(int id)
         {
-            _planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _loadWindow.width, _loadWindow.height), "Load Plan");
+            //_planner.DrawSolidWindowOverlay(new Rect(0f, 0f, _loadWindow.width, _loadWindow.height), "Load Plan");
 
             GUILayout.Label("Saved plans in " + PlansDirectory + " (legacy EngineStagePlanner plans are also read)");
             _loadScroll = GUILayout.BeginScrollView(_loadScroll, GUILayout.Height(260f));

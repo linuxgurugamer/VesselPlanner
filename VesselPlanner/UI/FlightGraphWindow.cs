@@ -13,7 +13,8 @@ namespace VesselPlanner.UI
     public sealed class FlightGraphWindow
     {
         private readonly FlightSensorManager _manager = new FlightSensorManager();
-        private Rect _window = new Rect(120, 90, 900, 650);
+        const float MINIMUM_WINDOW_WIDTH = 935f;
+        private Rect _window = new Rect(120, 90, MINIMUM_WINDOW_WIDTH, 650);
         private Rect _settingsWindow = new Rect(180, 90, 570, 720);
         private Vector2 _legendScroll;
         private Vector2 _settingsScroll;
@@ -32,7 +33,7 @@ namespace VesselPlanner.UI
         private bool _graphDirty = true;
         private bool _resizing;
         private bool _settingsResizing;
-        private Vector2 _pendingResizeDelta;
+        private float _pendingFlightWidthResizeDelta;
         private Vector2 _pendingSettingsResizeDelta;
         private string _status = "";
         private string _sampleDelayText = "1";
@@ -41,23 +42,35 @@ namespace VesselPlanner.UI
         private string _chartTopBodyName = "";
         private string _csvExportDirectory = DefaultCsvExportDirectory;
         private string _pngExportDirectory = DefaultPngExportDirectory;
+        private bool _solidFlightWindowBackground = true;
+        private int _elapsedTimeLabelGridInterval = DefaultElapsedTimeLabelGridInterval;
 
         private const string DefaultCsvExportDirectory = "VesselPlanner/PluginData/CSV";
         private const string DefaultPngExportDirectory = "Screenshots";
-        private const float MinWindowWidth = 680f;
         private const float MinWindowHeight = 480f;
         private const float MinSettingsWidth = 520f;
         private const float MinSettingsHeight = 420f;
         private const float ScreenMargin = 24f;
+        private static readonly int FlightWidthResizeHandleHint = "VesselPlannerFlightWidthResizeHandle".GetHashCode();
+        private static readonly int FlightSettingsResizeHandleHint = "VesselPlannerFlightSettingsResizeHandle".GetHashCode();
         private const int PixelsPerSample = 2;
-        private const int ElapsedTimeLabelCount = 5;
+        private const int GridDivisions = 10;
+        // At the 935 px minimum window width the graph is 907 px wide. The fixed grid
+        // spacing is derived from the original 226 px elapsed-time interval, divided into
+        // three equal columns. Resizing keeps that grid phase fixed and only reveals or
+        // removes columns at the right edge.
+        private const int ReferenceElapsedTimeTickSampleSpacing = 113;
+        private const int ReferenceGridLinesPerElapsedTimeTick = 3;
+        private const float VerticalGridSpacingPixels =
+            (ReferenceElapsedTimeTickSampleSpacing * PixelsPerSample) / (float)ReferenceGridLinesPerElapsedTimeTick;
+        private const int DefaultElapsedTimeLabelGridInterval = 3;
+        private static readonly string[] ElapsedTimeLabelFrequencyOptions = { "Every line", "Every other", "Every third" };
         private const float ElapsedTimeLabelWidth = 64f;
         private const float SampleDelayStepSeconds = 0.25f;
         private const int GlyphWidth = 5;
         private const int GlyphHeight = 7;
         private const int GlyphSpacing = 1;
         private const int ExportLabelStripHeight = 14;
-        private const int GridDivisions = 10;
 
         private static readonly Color32[] Palette =
         {
@@ -88,7 +101,7 @@ namespace VesselPlanner.UI
         public void Initialize()
         {
             _manager.Initialize();
-            LoadExportDirectories();
+            LoadFlightSettings();
             LoadAxisSides();
             _sampleDelayText = _manager.SampleDelaySeconds.ToString("0.##", CultureInfo.InvariantCulture);
             SetChartTopFromCurrentBody(true);
@@ -123,29 +136,32 @@ namespace VesselPlanner.UI
 
             if (Visible)
             {
+                ReleaseAbandonedResize(ref _resizing);
                 WindowSkin.Apply();
-                KeepSizeOnScreen(ref _window, MinWindowWidth, MinWindowHeight);
+                KeepSizeOnScreen(ref _window, MINIMUM_WINDOW_WIDTH, MinWindowHeight);
                 float requestedWidth = _window.width;
                 float requestedHeight = _window.height;
-                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041969, _window, DrawWindow, "VesselPlanner - Flight Data",
+                //DrawSolidFlightWindowBackground(_window);
+                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041969, _window, DrawWindow, "VesselPlanner - Flight Data", ToolbarRegistration.winDarker,
                     GUILayout.Width(requestedWidth), GUILayout.Height(requestedHeight));
-                // GUILayout must not grow the graph window to satisfy content. Only the resize grip changes its size.
+                // GUILayout must not grow the graph window to satisfy content. The right-edge grip changes width only; height stays fixed.
                 _window.x = drawn.x;
                 _window.y = drawn.y;
-                _window.width = requestedWidth;
+                _window.width = Math.Max(MINIMUM_WINDOW_WIDTH, requestedWidth);
                 _window.height = requestedHeight;
-                ApplyResize(ref _window, ref _pendingResizeDelta, MinWindowWidth, MinWindowHeight);
-                KeepSizeOnScreen(ref _window, MinWindowWidth, MinWindowHeight);
+                ApplyHorizontalResize(ref _window, ref _pendingFlightWidthResizeDelta, MINIMUM_WINDOW_WIDTH);
+                KeepSizeOnScreen(ref _window, MINIMUM_WINDOW_WIDTH, MinWindowHeight);
                 ClampWindow(ref _window);
             }
 
             if (SettingsVisible)
             {
+                ReleaseAbandonedResize(ref _settingsResizing);
                 WindowSkin.Apply();
                 KeepSizeOnScreen(ref _settingsWindow, MinSettingsWidth, MinSettingsHeight);
                 float requestedWidth = _settingsWindow.width;
                 float requestedHeight = _settingsWindow.height;
-                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041970, _settingsWindow, DrawSettingsWindow, "Flight Plot Settings",
+                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041970, _settingsWindow, DrawSettingsWindow, "Flight Plot Settings", ToolbarRegistration.winDarker,
                     GUILayout.Width(requestedWidth), GUILayout.Height(requestedHeight));
                 _settingsWindow.x = drawn.x;
                 _settingsWindow.y = drawn.y;
@@ -254,11 +270,14 @@ namespace VesselPlanner.UI
             GUILayout.Label("CSV export: " + GetCsvExportFolder());
             GUILayout.Label("PNG export: " + GetPngExportFolder());
 
-            // The resize grip is drawn as an absolute overlay at the lower-right corner.
-            // Do not reserve a GUILayout row for it; the final footer/status line should
-            // be the bottom row of the flight-data window.
-            DrawResizeHandle(_window, ref _resizing, ref _pendingResizeDelta);
-            GUI.DragWindow(new Rect(0f, 0f, _window.width, _window.height));
+            // Flight Data is intentionally height-fixed. Resize only horizontally from
+            // the centered grab handle on the right edge. The handle is an absolute overlay
+            // and does not consume a GUILayout row.
+            DrawHorizontalResizeHandle(_window, ref _resizing, ref _pendingFlightWidthResizeDelta, FlightWidthResizeHandleHint);
+
+            // Do not let the whole window take over a drag that started on the resize handle.
+            if (!_resizing)
+                GUI.DragWindow(new Rect(0f, 0f, _window.width, _window.height));
         }
 
         private void AdjustSampleDelay(float deltaSeconds)
@@ -343,6 +362,31 @@ namespace VesselPlanner.UI
                 GUILayout.Label("Body default source: " + _chartTopBodyName);
 
             GUILayout.Space(8);
+            bool newSolidFlightWindowBackground = GUILayout.Toggle(_solidFlightWindowBackground, "Use solid background for Flight Data window");
+            if (newSolidFlightWindowBackground != _solidFlightWindowBackground)
+            {
+                _solidFlightWindowBackground = newSolidFlightWindowBackground;
+                SaveFlightSettings();
+            }
+
+            GUILayout.Space(8);
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Time labels", GUILayout.Width(145));
+                int selectedFrequency = GUILayout.Toolbar(
+                    _elapsedTimeLabelGridInterval - 1,
+                    ElapsedTimeLabelFrequencyOptions,
+                    GUILayout.Width(300));
+                int newGridInterval = Mathf.Clamp(selectedFrequency + 1, 1, 3);
+                if (newGridInterval != _elapsedTimeLabelGridInterval)
+                {
+                    _elapsedTimeLabelGridInterval = newGridInterval;
+                    SaveFlightSettings();
+                    _status = "Time label spacing updated.";
+                }
+            }
+
+            GUILayout.Space(8);
             GUILayout.Label("CSV export folder");
             using (new GUILayout.HorizontalScope())
             {
@@ -350,12 +394,12 @@ namespace VesselPlanner.UI
                 if (!string.Equals(newCsvExportDirectory, _csvExportDirectory, StringComparison.Ordinal))
                 {
                     _csvExportDirectory = newCsvExportDirectory;
-                    SaveExportDirectories();
+                    SaveFlightSettings();
                 }
                 if (GUILayout.Button("Default", GUILayout.Width(70)))
                 {
                     _csvExportDirectory = DefaultCsvExportDirectory;
-                    SaveExportDirectories();
+                    SaveFlightSettings();
                     _status = "CSV export folder reset to default.";
                 }
             }
@@ -369,12 +413,12 @@ namespace VesselPlanner.UI
                 if (!string.Equals(newPngExportDirectory, _pngExportDirectory, StringComparison.Ordinal))
                 {
                     _pngExportDirectory = newPngExportDirectory;
-                    SaveExportDirectories();
+                    SaveFlightSettings();
                 }
                 if (GUILayout.Button("Default", GUILayout.Width(70)))
                 {
                     _pngExportDirectory = DefaultPngExportDirectory;
-                    SaveExportDirectories();
+                    SaveFlightSettings();
                     _status = "PNG export folder reset to default.";
                 }
             }
@@ -382,11 +426,6 @@ namespace VesselPlanner.UI
 
             using (new GUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Refresh available resources/sensors", GUILayout.Height(26)))
-                {
-                    _manager.RefreshNow();
-                    _graphDirty = true;
-                }
                 Vessel activeVessel = FlightGlobals.ActiveVessel;
                 string activeVesselName = activeVessel != null && !string.IsNullOrEmpty(activeVessel.vesselName)
                     ? activeVessel.vesselName
@@ -458,8 +497,9 @@ namespace VesselPlanner.UI
             GUILayout.EndScrollView();
 
             GUILayout.Space(24f);
-            DrawResizeHandle(_settingsWindow, ref _settingsResizing, ref _pendingSettingsResizeDelta);
-            GUI.DragWindow(new Rect(0f, 0f, _settingsWindow.width, _settingsWindow.height));
+            DrawResizeHandle(_settingsWindow, ref _settingsResizing, ref _pendingSettingsResizeDelta, FlightSettingsResizeHandleHint);
+            if (!_settingsResizing)
+                GUI.DragWindow(new Rect(0f, 0f, _settingsWindow.width, _settingsWindow.height));
         }
 
         private enum GraphAxisSide
@@ -761,11 +801,18 @@ namespace VesselPlanner.UI
             Color32 border = new Color32(115, 120, 130, 255);
             for (int i = 0; i < pixels.Length; i++) pixels[i] = background;
 
-            for (int gx = 0; gx <= GridDivisions; gx++)
+            // Vertical grid lines keep a fixed X phase while the graph is resized. The
+            // time-label frequency is independent of the grid itself: labels may appear
+            // at every line, every other line, or every third line. Wider graphs reveal
+            // additional fixed grid lines only at the right edge.
+            DrawVertical(pixels, width, height, 0, border);
+            for (int gx = 1; ; gx++)
             {
-                int x = (int)Math.Round((width - 1) * gx / (double)GridDivisions);
-                DrawVertical(pixels, width, height, x, gx == 0 || gx == GridDivisions ? border : grid);
+                int x = 1 + (int)Math.Round(gx * VerticalGridSpacingPixels);
+                if (x >= width - 1) break;
+                DrawVertical(pixels, width, height, x, grid);
             }
+            if (width > 1) DrawVertical(pixels, width, height, width - 1, border);
             for (int gy = 0; gy <= GridDivisions; gy++)
             {
                 int y = (int)Math.Round((height - 1) * gy / (double)GridDivisions);
@@ -922,41 +969,63 @@ namespace VesselPlanner.UI
             int lastVisible = samples.Count - 1;
             if (lastVisible < firstVisible) return;
 
-            // The labels sit at fixed positions spread across the full width of the graph,
-            // one per fifth of the plot area. Spacing them by sample position instead put
-            // them a couple of pixels apart while the graph was still filling, so they were
-            // drawn on top of each other.
-            //
-            // The axis therefore always spans the same number of samples as the plot area
-            // holds. Positions past the newest sample have no sample to read, so their time
-            // is projected from the newest one using the average interval between the
-            // samples on screen, falling back to the configured sample delay when there is
-            // only one. Those slots fill in with real data as it arrives.
+            // The vertical grid owns the fixed X positions. Time labels simply select
+            // every first, second, or third grid line according to the saved setting.
+            // This keeps label positions stationary during horizontal resizing.
+            double interval = GetVisibleSampleInterval(samples, firstVisible, lastVisible);
+            int gridStep = Mathf.Clamp(_elapsedTimeLabelGridInterval, 1, 3);
+
+            for (int gridIndex = 0; ; gridIndex += gridStep)
+            {
+                int tickXOffset = GetVerticalGridLineX(gridIndex);
+                if (gridIndex > 0 && tickXOffset >= width - 1) break;
+
+                double sampleOffset = gridIndex == 0
+                    ? 0.0
+                    : (tickXOffset - 1) / (double)PixelsPerSample;
+                double elapsed = GetElapsedTimeAtSampleOffset(samples, firstVisible, lastVisible, sampleOffset, interval);
+
+                float labelX = graphRect.x + tickXOffset - (ElapsedTimeLabelWidth * 0.5f);
+                GUI.Label(new Rect(labelX, graphRect.yMax + 1f, ElapsedTimeLabelWidth, 18f), FormatElapsedTime(elapsed), style);
+            }
+        }
+
+        private double GetVisibleSampleInterval(IList<FlightDataSample> samples, int firstVisible, int lastVisible)
+        {
             double interval = _manager.SampleDelaySeconds;
             if (lastVisible > firstVisible)
             {
                 double span = samples[lastVisible].ElapsedSeconds - samples[firstVisible].ElapsedSeconds;
                 if (span > 0.0) interval = span / (lastVisible - firstVisible);
             }
+            return interval;
+        }
 
-            // Drop to fewer labels on a narrow graph rather than letting them touch.
-            int labelCount = Mathf.Clamp((int)(graphRect.width / (ElapsedTimeLabelWidth + 8f)) + 1, 2, ElapsedTimeLabelCount);
+        private static double GetElapsedTimeAtSampleOffset(
+            IList<FlightDataSample> samples, int firstVisible, int lastVisible,
+            double sampleOffset, double fallbackInterval)
+        {
+            if (sampleOffset <= 0.0) return samples[firstVisible].ElapsedSeconds;
 
-            for (int label = 0; label < labelCount; label++)
+            double absoluteIndex = firstVisible + sampleOffset;
+            if (absoluteIndex <= lastVisible)
             {
-                int offset = (int)Math.Round((visibleCapacity - 1) * label / (double)(labelCount - 1));
-                int sampleIndex = firstVisible + offset;
+                int lower = Math.Max(firstVisible, Math.Min(lastVisible, (int)Math.Floor(absoluteIndex)));
+                int upper = Math.Min(lastVisible, lower + 1);
+                if (upper == lower) return samples[lower].ElapsedSeconds;
 
-                double elapsed = sampleIndex <= lastVisible
-                    ? samples[sampleIndex].ElapsedSeconds
-                    : samples[lastVisible].ElapsedSeconds + (sampleIndex - lastVisible) * interval;
-
-                // Centre the label on its position, then keep the outermost two inside the
-                // graph so neither is clipped by the window edge.
-                float x = graphRect.x + 1f + offset * PixelsPerSample;
-                float labelX = Mathf.Clamp(x - (ElapsedTimeLabelWidth * 0.5f), graphRect.x, graphRect.xMax - ElapsedTimeLabelWidth);
-                GUI.Label(new Rect(labelX, graphRect.yMax + 1f, ElapsedTimeLabelWidth, 18f), FormatElapsedTime(elapsed), style);
+                double fraction = absoluteIndex - lower;
+                return samples[lower].ElapsedSeconds +
+                    (samples[upper].ElapsedSeconds - samples[lower].ElapsedSeconds) * fraction;
             }
+
+            return samples[lastVisible].ElapsedSeconds + (absoluteIndex - lastVisible) * fallbackInterval;
+        }
+
+        private static int GetVerticalGridLineX(int gridIndex)
+        {
+            if (gridIndex <= 0) return 0;
+            return 1 + (int)Math.Round(gridIndex * VerticalGridSpacingPixels);
         }
 
         private static string FormatElapsedTime(double seconds)
@@ -1100,29 +1169,23 @@ namespace VesselPlanner.UI
             int lastVisible = samples.Count - 1;
             if (lastVisible < firstVisible) return;
 
-            // Same axis as the on-screen labels: fixed positions across the width, with
-            // times past the newest sample projected from the average interval on screen.
-            double interval = _manager.SampleDelaySeconds;
-            if (lastVisible > firstVisible)
-            {
-                double span = samples[lastVisible].ElapsedSeconds - samples[firstVisible].ElapsedSeconds;
-                if (span > 0.0) interval = span / (lastVisible - firstVisible);
-            }
-
+            // Match the on-screen axis and the selected grid-line frequency exactly.
+            double interval = GetVisibleSampleInterval(samples, firstVisible, lastVisible);
+            int gridStep = Mathf.Clamp(_elapsedTimeLabelGridInterval, 1, 3);
             Color32 color = new Color32(224, 224, 224, 255);
-            int labelCount = Mathf.Clamp((width / 60) + 1, 2, ElapsedTimeLabelCount);
             int labelY = height - ExportLabelStripHeight + 3;
 
-            for (int label = 0; label < labelCount; label++)
+            for (int gridIndex = 0; ; gridIndex += gridStep)
             {
-                int offset = (int)Math.Round((visibleCapacity - 1) * label / (double)(labelCount - 1));
-                int sampleIndex = firstVisible + offset;
-                double elapsed = sampleIndex <= lastVisible
-                    ? samples[sampleIndex].ElapsedSeconds
-                    : samples[lastVisible].ElapsedSeconds + (sampleIndex - lastVisible) * interval;
+                int tickX = GetVerticalGridLineX(gridIndex);
+                if (gridIndex > 0 && tickX >= width - 1) break;
 
+                double sampleOffset = gridIndex == 0
+                    ? 0.0
+                    : (tickX - 1) / (double)PixelsPerSample;
+                double elapsed = GetElapsedTimeAtSampleOffset(samples, firstVisible, lastVisible, sampleOffset, interval);
                 string text = FormatElapsedTime(elapsed);
-                int x = Mathf.Clamp(1 + offset * PixelsPerSample - MeasureText(text) / 2, 1, width - 1 - MeasureText(text));
+                int x = tickX - (MeasureText(text) / 2);
                 DrawText(pixels, width, height, x, labelY, text, color);
             }
         }
@@ -1278,10 +1341,12 @@ namespace VesselPlanner.UI
             }
         }
 
-        private void LoadExportDirectories()
+        private void LoadFlightSettings()
         {
             _csvExportDirectory = DefaultCsvExportDirectory;
             _pngExportDirectory = DefaultPngExportDirectory;
+            _solidFlightWindowBackground = true;
+            _elapsedTimeLabelGridInterval = DefaultElapsedTimeLabelGridInterval;
             try
             {
                 string readPath = SettingsReadPath;
@@ -1305,14 +1370,26 @@ namespace VesselPlanner.UI
                     string value = settings.GetValue("PngExportDirectory");
                     if (!string.IsNullOrWhiteSpace(value)) _pngExportDirectory = value.Trim();
                 }
+                if (settings.HasValue("SolidFlightWindowBackground"))
+                {
+                    bool value;
+                    if (bool.TryParse(settings.GetValue("SolidFlightWindowBackground"), out value))
+                        _solidFlightWindowBackground = value;
+                }
+                if (settings.HasValue("ElapsedTimeLabelGridInterval"))
+                {
+                    int value;
+                    if (int.TryParse(settings.GetValue("ElapsedTimeLabelGridInterval"), NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+                        _elapsedTimeLabelGridInterval = Mathf.Clamp(value, 1, 3);
+                }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[VesselPlanner] Unable to load export directories: " + ex.Message);
+                Debug.LogWarning("[VesselPlanner] Unable to load flight settings: " + ex.Message);
             }
         }
 
-        private void SaveExportDirectories()
+        private void SaveFlightSettings()
         {
             try
             {
@@ -1326,12 +1403,14 @@ namespace VesselPlanner.UI
                 if (settings == null) settings = root.AddNode("ENGINE_STAGE_PLANNER_SETTINGS");
                 settings.SetValue("CsvExportDirectory", string.IsNullOrWhiteSpace(_csvExportDirectory) ? DefaultCsvExportDirectory : _csvExportDirectory.Trim(), true);
                 settings.SetValue("PngExportDirectory", string.IsNullOrWhiteSpace(_pngExportDirectory) ? DefaultPngExportDirectory : _pngExportDirectory.Trim(), true);
+                settings.SetValue("SolidFlightWindowBackground", _solidFlightWindowBackground, true);
+                settings.SetValue("ElapsedTimeLabelGridInterval", _elapsedTimeLabelGridInterval.ToString(CultureInfo.InvariantCulture), true);
                 root.Save(SettingsPath);
             }
             catch (Exception ex)
             {
-                _status = "Unable to save export folders: " + ex.Message;
-                Debug.LogWarning("[VesselPlanner] Unable to save export directories: " + ex.Message);
+                _status = "Unable to save flight settings: " + ex.Message;
+                Debug.LogWarning("[VesselPlanner] Unable to save flight settings: " + ex.Message);
             }
         }
 
@@ -1387,27 +1466,102 @@ namespace VesselPlanner.UI
             pixels[y * width + x] = color;
         }
 
-        private static void DrawResizeHandle(Rect window, ref bool resizing, ref Vector2 pendingDelta)
+        private enum ResizeHandleEvent
         {
-            Rect handle = new Rect(Math.Max(0f, window.width - 20f), Math.Max(0f, window.height - 20f), 18f, 18f);
-            GUI.Box(handle, "//");
+            None,
+            Started,
+            Ended
+        }
+
+        private static void DrawHorizontalResizeHandle(Rect window, ref bool resizing, ref float pendingDelta, int controlHint)
+        {
             Event e = Event.current;
             if (e == null) return;
-            if (e.type == EventType.MouseDown && e.button == 0 && handle.Contains(e.mousePosition))
+
+            int controlId = GUIUtility.GetControlID(controlHint, FocusType.Passive);
+            const float gripWidth = 12f;
+            const float gripHeight = 56f;
+            float gripY = Mathf.Max(30f, (window.height - gripHeight) * 0.5f);
+            Rect grip = new Rect(Mathf.Max(0f, window.width - gripWidth - 1f), gripY, gripWidth, gripHeight);
+
+            if (e.type == EventType.Repaint)
+                GUI.Box(grip, "\u22ee");
+
+            if (e.type == EventType.Layout) return;
+
+            Rect hitArea = new Rect(grip.x - 5f, grip.y - 5f, grip.width + 10f, grip.height + 10f);
+            if (e.type == EventType.MouseDown && e.button == 0 && hitArea.Contains(e.mousePosition))
             {
                 resizing = true;
+                pendingDelta = 0f;
+                GUIUtility.hotControl = controlId;
                 e.Use();
             }
             else if (e.type == EventType.MouseDrag && resizing)
             {
-                pendingDelta += e.delta;
+                pendingDelta += e.delta.x;
+                GUIUtility.hotControl = controlId;
                 e.Use();
             }
-            else if (e.type == EventType.MouseUp && resizing)
+            else if ((e.type == EventType.MouseUp || e.type == EventType.MouseLeaveWindow) && resizing)
             {
                 resizing = false;
-                e.Use();
+                if (GUIUtility.hotControl == controlId) GUIUtility.hotControl = 0;
+                if (e.type == EventType.MouseUp) e.Use();
             }
+        }
+
+        private static ResizeHandleEvent DrawResizeHandle(Rect window, ref bool resizing, ref Vector2 pendingDelta, int controlHint)
+        {
+            Event e = Event.current;
+            if (e == null) return ResizeHandleEvent.None;
+
+            int controlId = GUIUtility.GetControlID(controlHint, FocusType.Passive);
+            Rect handle = new Rect(Math.Max(0f, window.width - 20f), Math.Max(0f, window.height - 20f), 18f, 18f);
+            if (e.type == EventType.Repaint)
+                GUI.Box(handle, "//");
+
+            if (e.type == EventType.Layout) return ResizeHandleEvent.None;
+
+            if (e.type == EventType.MouseDown && e.button == 0 && handle.Contains(e.mousePosition))
+            {
+                resizing = true;
+                pendingDelta = Vector2.zero;
+                GUIUtility.hotControl = controlId;
+                e.Use();
+                return ResizeHandleEvent.Started;
+            }
+            if (e.type == EventType.MouseDrag && resizing)
+            {
+                pendingDelta += e.delta;
+                GUIUtility.hotControl = controlId;
+                e.Use();
+                return ResizeHandleEvent.None;
+            }
+            if ((e.type == EventType.MouseUp || e.type == EventType.MouseLeaveWindow) && resizing)
+            {
+                resizing = false;
+                if (GUIUtility.hotControl == controlId) GUIUtility.hotControl = 0;
+                if (e.type == EventType.MouseUp) e.Use();
+                return ResizeHandleEvent.Ended;
+            }
+
+            return ResizeHandleEvent.None;
+        }
+
+        private static void ReleaseAbandonedResize(ref bool resizing)
+        {
+            if (!resizing || Input.GetMouseButton(0)) return;
+            resizing = false;
+            GUIUtility.hotControl = 0;
+        }
+
+        private static void ApplyHorizontalResize(ref Rect window, ref float pendingDelta, float minWidth)
+        {
+            if (Mathf.Abs(pendingDelta) < 0.01f) return;
+            float maxWidth = Mathf.Max(minWidth, Screen.width - ScreenMargin);
+            window.width = Mathf.Clamp(window.width + pendingDelta, minWidth, maxWidth);
+            pendingDelta = 0f;
         }
 
         private static void ApplyResize(ref Rect window, ref Vector2 pendingDelta, float minWidth, float minHeight)

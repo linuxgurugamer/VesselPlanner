@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.6.43
+
+- Added a **Time labels** setting to Flight Plot Settings with **Every line**, **Every other**, and **Every third** choices.
+- The selected time-label frequency is saved as `ElapsedTimeLabelGridInterval` in `VesselPlannerSettings.cfg`; the default remains every third vertical grid line.
+- Time labels are now positioned directly from the fixed vertical-grid coordinates, so all three frequency choices remain stationary while the Flight Data window is resized.
+- Elapsed values on intermediate grid lines are interpolated from the visible samples, with the existing sample interval used for extrapolation beyond the newest visible sample.
+- PNG export uses the same selected time-label frequency and alignment as the on-screen graph.
+- Updated README and manuals for the configurable time-label spacing.
+
+## 0.6.42
+
+- Removed the **Refresh available resources/sensors** button from Flight Plot Settings; resources and sensor availability continue to refresh automatically.
+- Fixed elapsed-time label placement so labels after the minimum-width boundary are no longer shifted left by the right-edge clamp.
+- Elapsed-time labels now remain centered on their fixed tick positions, keeping every interval exactly three vertical grid columns apart.
+- PNG export uses the same corrected elapsed-time label alignment as the on-screen graph.
+- Updated README and manuals for the Flight Data changes.
+
+## 0.6.41
+
+- Changed the Flight Data vertical grid spacing so each elapsed-time tick interval is divided into three equal fixed grid intervals.
+- Every third vertical grid line now aligns with an elapsed-time marker at the bottom of the graph.
+- Grid lines and elapsed-time markers remain stationary during horizontal resizing; wider graphs only append additional grid lines and time markers on the right.
+- Updated README and manuals for the new grid/time-marker alignment.
+
+## 0.6.40
+
+- Changed the Flight Data graph vertical grid lines to fixed horizontal positions based on the 935 px minimum-width layout.
+- Resizing the Flight Data window no longer redistributes existing vertical grid lines; widening adds additional grid lines only on the right, while narrowing removes only lines that no longer fit.
+- The graph's moving right border remains tied to the current graph width.
+- Normalized release metadata from the supplied 0.6.39 rebase baseline to version 0.6.40.
+- Updated README and manuals for the fixed vertical-grid behavior.
+
+## 0.6.36
+
+- Changed the Flight Data window to horizontal-only resizing.
+- Replaced the lower-right corner resize control with a centered grab handle on the right edge; dragging it changes only the window width.
+- The Flight Data window height is no longer user-resizable, eliminating vertical resize movement and making the graph layout more stable.
+- The separate Flight Plot Settings window retains its existing two-axis resize handle.
+- Updated README and manuals for the new Flight Data resize behavior.
+
+## 0.6.35
+
+- Fixed Flight Data window flicker while resizing with the solid background enabled.
+- The opaque Flight Data background is now drawn once behind the real KSP window instead of drawing a second full window skin inside the Flight Data window. This preserves the selected skin, title, and border while eliminating the resize-time ghost/second-window effect.
+- Retained the 0.6.34 resize-grip mouse ownership and bottom-edge anchoring behavior.
+- Updated README and manuals for the revised solid-background rendering behavior.
+
+## 0.6.34
+
+- Fixed the Flight Data resize grip so it owns the mouse drag for the full resize operation instead of allowing the window drag handler to take over part of the movement.
+- When the Flight Data window starts a resize while its bottom edge is aligned with the bottom of the screen, finishing the resize preserves that bottom alignment.
+- Changed the default **Use solid background for Flight Data window** setting to enabled for new configurations. Existing saved `SolidFlightWindowBackground` values are still honored.
+- Updated README and manuals for the new Flight Data resize behavior and solid-background default.
+
+## 0.6.33
+
+- Replaced `Manual/VesselPlanner-Manual.docx` with the user-supplied illustrated manual containing the added VesselPlanner UI screenshots.
+- Preserved all embedded manual images while bringing the illustrated document forward to version **0.6.33**.
+- Added the current **Use solid background for Flight Data window** option to the illustrated manual so Flight Settings documentation matches the 0.6.32 functionality.
+
+## 0.6.32
+
+- Added a persistent **Use solid background for Flight Data window** option to **Flight Plot Settings**.
+- When enabled, the Flight Data graph window uses an opaque dark background while retaining the selected KSP/alternate window skin and normal border/title styling.
+- The new setting is stored in `VesselPlannerSettings.cfg` as `SolidFlightWindowBackground` and is off by default.
+
+## 0.6.31
+
+- Replaced `jenkins.txt` with the VesselPlanner-specific Jenkins/build configuration.
+- The build configuration now targets `VesselPlanner`, copies `VesselPlanner.version`, `License.md`, and `README.md` into `GameData/VesselPlanner`, and includes the `Manual` folder in release packages.
+
 ## 0.6.30
 
 - Increased the maximum horizontal resize width of the main VesselPlanner editor window from **1280 px** to **1850 px**.
