@@ -31,6 +31,17 @@ namespace VesselPlanner.Core
         public double ExcessFraction { get; set; }
         public List<PropellantRequirement> Provided { get; } = new List<PropellantRequirement>();
 
+        // Kilograms of capacity for the propellants required by the selected engine, per Fund.
+        // Using mass keeps the metric comparable across resources with different KSP units.
+        public double CostEfficiency
+        {
+            get
+            {
+                if (TotalCost <= 0.0) return 0.0;
+                return Provided.Sum(p => p.MassTons) * 1000.0 / TotalCost;
+            }
+        }
+
         public string CapacitySummary
         {
             get

@@ -167,7 +167,7 @@ namespace VesselPlanner.UI
 
         private enum TankSortColumn
         {
-            None, Tank, Count, DryMass, Excess, Bulkhead, Capacity
+            None, Tank, Count, DryMass, CostEfficiency, Excess, Bulkhead, Capacity
         }
 
         private enum SolutionColumn
@@ -1629,12 +1629,13 @@ namespace VesselPlanner.UI
             // The tank table occupies the wider right-hand Planning detail pane.
             // These widths favor the descriptive columns while retaining room for the
             // complete Add Tank button at the planner's minimum supported width.
-            const float tankNameWidth = 160f;
+            const float tankNameWidth = 150f;
             const float countWidth = 26f;
             const float dryMassWidth = 55f;
+            const float costEfficiencyWidth = 70f;
             const float excessWidth = 65f;
-            const float bulkheadWidth = 70f;
-            const float capacityWidth = 170f;
+            const float bulkheadWidth = 65f;
+            const float capacityWidth = 150f;
             const float addWidth = 78f;
 
             using (new GUILayout.HorizontalScope())
@@ -1642,6 +1643,7 @@ namespace VesselPlanner.UI
                 TankSortHeader("Tank", tankNameWidth, TankSortColumn.Tank);
                 TankSortHeader("#", countWidth, TankSortColumn.Count);
                 TankSortHeader("Dry t", dryMassWidth, TankSortColumn.DryMass);
+                TankSortHeader("Cost Eff.", costEfficiencyWidth, TankSortColumn.CostEfficiency);
                 TankSortHeader("Excess", excessWidth, TankSortColumn.Excess);
                 TankSortHeader("Bulkhead", bulkheadWidth, TankSortColumn.Bulkhead);
                 TankSortHeader("Capacity", capacityWidth, TankSortColumn.Capacity);
@@ -1655,6 +1657,7 @@ namespace VesselPlanner.UI
                 TankSelectionCell(t, t.Tank.DisplayName, tankNameWidth);
                 TankSelectionCell(t, t.Count.ToString(), countWidth);
                 TankSelectionCell(t, F(t.TotalDryMassTons), dryMassWidth);
+                TankSelectionCell(t, t.CostEfficiency.ToString("0.###", CultureInfo.InvariantCulture), costEfficiencyWidth);
                 TankSelectionCell(t, (t.ExcessFraction * 100.0).ToString("0.0") + "%", excessWidth);
                 TankSelectionCell(t, TankBulkheadLabel(t.Tank), bulkheadWidth);
                 TankSelectionCell(t, t.CapacitySummary, capacityWidth);
@@ -1662,7 +1665,7 @@ namespace VesselPlanner.UI
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
-            GUILayout.Label("Click a tank row to select it. # is the number of copies required. Add Tank places one copy on the editor cursor; repeat it for the indicated count.");
+            GUILayout.Label("Click a tank row to select it. # is the number of copies required. Cost Eff. is kg of required-propellant capacity per Fund. Add Tank places one copy on the editor cursor; repeat it for the indicated count.");
         }
 
         private void TankSelectionCell(TankSuggestion tank, string text, float width)
@@ -2741,6 +2744,7 @@ namespace VesselPlanner.UI
                 case TankSortColumn.Tank: selector = t => t.Tank.DisplayName; break;
                 case TankSortColumn.Count: selector = t => t.Count; break;
                 case TankSortColumn.DryMass: selector = t => t.TotalDryMassTons; break;
+                case TankSortColumn.CostEfficiency: selector = t => t.CostEfficiency; break;
                 case TankSortColumn.Excess: selector = t => t.ExcessFraction; break;
                 case TankSortColumn.Bulkhead: selector = t => TankBulkheadLabel(t.Tank); break;
                 case TankSortColumn.Capacity: selector = t => t.CapacitySummary ?? string.Empty; break;

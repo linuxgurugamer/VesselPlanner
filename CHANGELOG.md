@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.44
+
+- Added a sortable **Cost Eff.** column to the Planning Tanks list.
+- Tank cost efficiency is calculated as kilograms of capacity for the selected engine's required propellants divided by the total cost of the suggested tank combination in Funds.
+- Using propellant mass instead of raw resource units keeps the efficiency value comparable across stock and mod resources with different unit scales.
+- Updated README and manuals for the tank cost-efficiency metric.
+
 ## 0.6.43
 
 - Added a **Time labels** setting to Flight Plot Settings with **Every line**, **Every other**, and **Every third** choices.

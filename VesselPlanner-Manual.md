@@ -145,6 +145,7 @@ Below the engine results, the **Tanks needed** table lists each available tank t
 
 - how many copies you'd need
 - total tank dry mass
+- cost efficiency (kg of required-propellant capacity per Fund)
 - excess capacity
 - supplied resource capacity
 
@@ -402,6 +403,7 @@ For unusual modded fuel-flow systems, use **Planning** with a manually entered p
 | 0.5.13 | Burn duration computed from propellant the candidate engine can actually use |
 | 0.5.14–0.5.19 | Stage clamping in Analyze Existing; wider mass/thrust columns; column and info-line visibility settings; persistent draggable Settings; per-mode close-after-Add; Alt+P removed; Simulation environment split into its own pane; Appearance opaque-window option |
 | 0.5.25 | Corrected the scene-switch callback signature to `GameEvents.FromToAction<GameScenes, GameScenes>` |
+| 0.6.44 | Added sortable tank Cost Eff. as kg of required-propellant capacity per Fund |
 | 0.6.43 | Added selectable time-label frequency: every vertical grid line, every other line, or every third line |
 | 0.6.42 | Removed the manual resource/sensor refresh button and corrected elapsed-time labels so every interval stays exactly three grid columns apart |
 | 0.6.41 | Every third fixed vertical Flight Data grid line now aligns with an elapsed-time marker; resizing still only adds or removes positions on the right |

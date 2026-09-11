@@ -120,11 +120,12 @@ Each row shows information such as:
 - tank name
 - number required
 - dry mass
+- cost efficiency in kilograms of required-propellant capacity per Fund
 - excess capacity
 - total capacity
 - KSP bulkhead profile
 
-Click a tank row to select it. The selected tank is highlighted and is also shown beneath the selected engine name.
+Click a tank row to select it. The selected tank is highlighted and is also shown beneath the selected engine name. The sortable **Cost Eff.** column is the total mass capacity of the selected engine's required propellants, in kilograms, divided by the total cost of the suggested tank combination in Funds.
 
 > **[IMAGE PLACEHOLDER: Tanks pane with one tank row selected]**
 
