@@ -20,7 +20,7 @@ namespace VesselPlanner.Core
     ///     someRawImage.texture = rt;
     ///
     /// Results are cached per part + every parameter that affects the render
-    /// (size, angle, zoom, lighting, background) so repeated calls (e.g. a
+    /// (size, angle, zoom, lighting, background, alpha) so repeated calls (e.g. a
     /// scrolling parts list) don't re-render every frame, but changing any of
     /// those parameters always produces a fresh render rather than a stale
     /// cached one. Cache identity is by AvailablePart.partUrl (falling back to
@@ -45,7 +45,7 @@ namespace VesselPlanner.Core
         const float ZOOM_FACTOR_ICON = 0.8f; // 0.6f; // Default zoom factor for icon rendering
         const float ZOOM_FACTOR_ROTATION = 1f; // 0.6f; // Default zoom factor for icon rendering
 
-        const float CAMERA_PITCH_DEGREES = 40f; // Default camera pitch for icon rendering
+        const float CAMERA_PITCH_DEGREES = 20f; // Default camera pitch for icon rendering
         const float CAMERA_YAW_DEGREES = 45f; // Default camera yaw for icon rendering
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace VesselPlanner.Core
 
         /// <summary>Resolution (width/height) of each rotating preview frame. Kept modest since
         /// RotatingPreviewFrameCount frames are held in memory at once per part.</summary>
-        public const int RotatingPreviewSize = 100; // 200;
+        public const int RotatingPreviewSize = 100; // Default; callers may override per preview.
 
         private static readonly Dictionary<string, Texture2D> _cache = new Dictionary<string, Texture2D>();
         private static readonly Dictionary<string, Texture2D[]> _rotatingPreviewCache = new Dictionary<string, Texture2D[]>();
@@ -77,10 +77,11 @@ namespace VesselPlanner.Core
         /// <param name="transparentBackground">If true, background alpha is 0; otherwise backgroundColor is used opaque.</param>
         /// <param name="backgroundColor">Background color (alpha ignored unless transparentBackground is false).</param>
         /// <param name="zoomFactor">Smaller = camera pulled back further (part appears smaller in frame).</param>
-        /// <param name="cameraPitchDegrees">Downward viewing angle, in degrees above the horizon. 0 = looking straight along the horizontal, 90 = straight down. Defaults to a 40 degree "looking down at the part" angle.</param>
+        /// <param name="cameraPitchDegrees">Downward viewing angle, in degrees above the horizon. 0 = looking straight along the horizontal, 90 = straight down. Defaults to a 20 degree "looking down at the part" angle.</param>
         /// <param name="cameraYawDegrees">Horizontal rotation around the part, in degrees, so the view isn't a flat front-on shot.</param>
         /// <param name="lightIntensity">Brightness of the light illuminating the part. 1.0 is Unity's default directional-light intensity; lower it (e.g. 0.3-0.6) to darken the render, or pass 0 to rely only on Unity's ambient light.</param>
-        /// <param name="useCache">If true, reuses a previously rendered icon for the same part+size.</param>
+        /// <param name="useCache">If true, reuses a previously rendered icon for the same part+render settings.</param>
+        /// <param name="alphaMultiplier">Multiplier applied to the rendered alpha channel. 0 = fully transparent, 1 = unchanged.</param>
         public static Texture2D RenderIcon(
             AvailablePart avPart,
             int size = 256,
@@ -90,7 +91,8 @@ namespace VesselPlanner.Core
             float cameraPitchDegrees = CAMERA_PITCH_DEGREES,
             float cameraYawDegrees = CAMERA_YAW_DEGREES,
             float lightIntensity = LIGHT_INTENSITY,
-            bool useCache = true)
+            bool useCache = true,
+            float alphaMultiplier = 1f)
         {
             if (avPart == null)
             {
@@ -104,7 +106,8 @@ namespace VesselPlanner.Core
             // had already been rendered once silently returned the old cached image
             // instead of re-rendering - that's almost certainly why pitch appeared to
             // have no effect.
-            string cacheKey = BuildCacheKey(avPart, size, transparentBackground, backgroundColor, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity);
+            alphaMultiplier = Mathf.Clamp01(alphaMultiplier);
+            string cacheKey = BuildCacheKey(avPart, size, transparentBackground, backgroundColor, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity, alphaMultiplier);
             if (useCache && _cache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
                 return cached;
 
@@ -121,6 +124,17 @@ namespace VesselPlanner.Core
                 RenderTexture previousActive = RenderTexture.active;
                 RenderTexture.active = rt;
                 result.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+                if (alphaMultiplier < 0.9999f)
+                {
+                    Color32[] pixels = result.GetPixels32();
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        Color32 pixel = pixels[i];
+                        pixel.a = (byte)Mathf.Clamp(Mathf.RoundToInt(pixel.a * alphaMultiplier), 0, 255);
+                        pixels[i] = pixel;
+                    }
+                    result.SetPixels32(pixels);
+                }
                 result.Apply(false, false);
 
                 RenderTexture.active = previousActive;
@@ -222,7 +236,9 @@ namespace VesselPlanner.Core
             float zoomFactor = ZOOM_FACTOR_ROTATION,
             float cameraPitchDegrees = CAMERA_PITCH_DEGREES,
             float cameraYawDegrees = CAMERA_YAW_DEGREES,
-            float lightIntensity = LIGHT_INTENSITY)
+            float lightIntensity = LIGHT_INTENSITY,
+            float alphaMultiplier = 1f,
+            int rotatingPreviewSize = RotatingPreviewSize)
         {
             if (available == null)
             {
@@ -239,6 +255,7 @@ namespace VesselPlanner.Core
             // Replace any previous preview under this key rather than leaking it.
             DisposeRotatingPreview(partKey);
 
+            rotatingPreviewSize = Mathf.Clamp(rotatingPreviewSize, 32, 256);
             var frames = new Texture2D[RotatingPreviewFrameCount];
             float yawStep = 360f / RotatingPreviewFrameCount;
 
@@ -250,14 +267,15 @@ namespace VesselPlanner.Core
                 // and each yaw is a one-off value that would just bloat the icon cache.
                 Texture2D frame = RenderIcon(
                     available,
-                    RotatingPreviewSize,
+                    rotatingPreviewSize,
                     transparentBackground,
                     backgroundColor,
                     zoomFactor,
                     cameraPitchDegrees,
                     yaw,
                     lightIntensity,
-                    useCache: false);
+                    useCache: false,
+                    alphaMultiplier: alphaMultiplier);
 
                 if (frame == null)
                 {
@@ -292,9 +310,11 @@ namespace VesselPlanner.Core
             float zoomFactor = ZOOM_FACTOR_ROTATION,
             float cameraPitchDegrees = CAMERA_PITCH_DEGREES,
             float cameraYawDegrees = CAMERA_YAW_DEGREES,
-            float lightIntensity = LIGHT_INTENSITY)
+            float lightIntensity = LIGHT_INTENSITY,
+            float alphaMultiplier = 1f,
+            int rotatingPreviewSize = RotatingPreviewSize)
         {
-            return BuildRotatingPreview(available, partKey, transparentBackground, backgroundColor, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity);
+            return BuildRotatingPreview(available, partKey, transparentBackground, backgroundColor, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity, alphaMultiplier, rotatingPreviewSize);
         }
 
         /// <summary>Returns true if BuildRotatingPreview has already built frames for this key.</summary>
@@ -610,14 +630,16 @@ namespace VesselPlanner.Core
             float zoomFactor,
             float cameraPitchDegrees,
             float cameraYawDegrees,
-            float lightIntensity)
+            float lightIntensity,
+            float alphaMultiplier)
         {
             Color bg = transparentBackground ? new Color(0f, 0f, 0f, 0f) : (backgroundColor ?? Color.black);
             var str = string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
-                "{0}_{1}_{2}_{3:F2}_{4:F2}_{5:F2}_{6:F2}_{7}",
+                "{0}_{1}_{2}_{3:F2}_{4:F2}_{5:F2}_{6:F2}_{7}_{8:F3}",
                 GetPartIdentifier(avPart), size, transparentBackground, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity,
-                transparentBackground ? "t" : bg.r.ToString("F2") + "," + bg.g.ToString("F2") + "," + bg.b.ToString("F2"));
+                transparentBackground ? "t" : bg.r.ToString("F2") + "," + bg.g.ToString("F2") + "," + bg.b.ToString("F2"),
+                alphaMultiplier);
             //Debug.Log("PartIconRendererBuildCacheKey: " + str);
             return str;
         }

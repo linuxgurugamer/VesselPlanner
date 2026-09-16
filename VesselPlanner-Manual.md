@@ -300,6 +300,18 @@ Controls persistence of the text filters with four independent options: **Save e
 
 **Use solid backgrounds for all editor windows** gives the planner and the editor Settings window an opaque dark underlay while keeping normal KSP borders and title styling. Off by default. Flight windows use their own separate Flight Settings option.
 
+Part-image rendering can also be tuned here:
+
+- **ZoomFactor for icons** — static list-thumbnail zoom; default `0.8`
+- **ZoomFactor for Rotating Images** — rotating hover-preview zoom; default `1.0`
+- **Camera Yaw Degrees** — horizontal camera angle; range `0–180`, default `45`
+- **Camera Pitch Degrees** — vertical camera angle; range `0–90`, default `20`
+- **RotatingPreviewSize** — pre-rendered rotating-frame resolution in pixels; range `32`–`256`, default `100`
+- **Degrees per frame** — rotating-preview playback rate control; range `1`–`180`, default `60`
+- **Rotating Image Background** — combo-box choice for the enlarged rotating hover preview: `Transparent` (default), `Black`, `Dark Gray`, `Gray`, or `White`. Static list icons remain transparent.
+
+Every numeric part-image setting has both an editable value and a slider. These values are saved in `VesselPlannerSettings.cfg`. Changes clear the thumbnail/rotating-preview caches immediately so newly rendered images use the new settings without restarting KSP. **Reset image settings** restores the defaults.
+
 ---
 
 ## 10. Flight telemetry plotter

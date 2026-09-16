@@ -6,6 +6,22 @@ A Word version of this instruction manual is included at `Manual/VesselPlanner-M
 
 A detailed Stage-By-Stage walkthrough is included at `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`.
 
+### 0.7.52 part-image slider alignment
+
+The numeric part-image sliders in **Settings → Appearance** are drawn 5 pixels lower within each row so they align more naturally with the adjacent text fields and labels.
+
+### 0.7.51 part-image setting controls
+
+**Settings → Appearance** now uses a combo box for the rotating-image background and adds a slider beside each numeric part-image setting. `RotatingPreviewSize` is configurable from 32–256 pixels (default 100), and the rotating-preview playback value previously hard-coded as `60f` is exposed as **Degrees per frame** from 1–180 (default 60).
+
+### 0.7.50 rotating-image background control
+
+**Settings → Appearance** keeps Camera Pitch Degrees at the `20` default and replaces the Alpha Channel control with **Rotating Image Background** choices: Transparent, Black, Dark Gray, Gray, and White. Static list icons remain transparent.
+
+### 0.7.48 configurable part-image camera
+
+**Settings → Appearance** now includes separate zoom factors for list icons and rotating hover images, plus camera yaw and pitch controls. Changes apply immediately and are saved in `VesselPlannerSettings.cfg`.
+
 ### 0.7.46 part-thumbnail hover preview
 
 Hovering over any engine or tank thumbnail in Planning, Analyze Existing, or the Stage-By-Stage build list now shows a larger 160 px preview. The hover image is rendered into a separate 192 px cache entry so it stays sharper than an enlarged copy of the normal 64 px list thumbnail.
@@ -542,6 +558,13 @@ Appearance options include:
 
 - **KSP skin** or **Alternate skin**
 - **Use solid backgrounds for all editor windows**
+- **ZoomFactor for icons** — zoom used by the static part thumbnails; default `0.8`
+- **ZoomFactor for Rotating Images** — zoom used by the enlarged rotating hover preview; default `1.0`
+- **Camera Yaw Degrees** — horizontal camera angle; range `0–180`, default `45`
+- **Camera Pitch Degrees** — vertical camera angle; range `0–90`, default `20`
+- **Rotating Image Background** — background used by the enlarged rotating hover preview: `Transparent` (default), `Black`, `Dark Gray`, `Gray`, or `White`. Static list icons remain transparent.
+
+Changing a part-image value clears the relevant render caches immediately. **Reset image settings** restores the defaults above.
 
 Solid backgrounds are enabled by default for new configurations. The setting applies to the main editor planner, Settings window, and Stage-By-Stage windows. Flight windows are controlled separately from Flight Settings.
 

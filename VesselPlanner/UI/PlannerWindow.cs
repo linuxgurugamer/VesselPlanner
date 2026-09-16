@@ -1,4 +1,4 @@
-using ClickThroughFix;
+﻿using ClickThroughFix;
 using KSP.UI.Screens;
 using System;
 using System.Collections.Generic;
@@ -60,11 +60,19 @@ namespace VesselPlanner.UI
         private const string PickStageInputLockId = "VesselPlanner_PickStageFromPart";
         private const int PlanningBodyComboId = 41007;
         private const int AnalysisBodyComboId = 41008;
+        private const int RotatingImageBackgroundComboId = 41010;
         private static readonly FieldInfo StageGroupDragHandlerField = typeof(StageGroup).GetField("dragHandler", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private string _engineNameFilter = "";
         private string _engineExcludeFilter = "";
         private string _tankNameFilter = "";
         private string _tankExcludeFilter = "";
+        private string _iconZoomFactorText = "0.8";
+        private string _rotatingImageZoomFactorText = "1.0";
+        private string _cameraYawDegreesText = "45";
+        private string _cameraPitchDegreesText = "20";
+        private string _rotatingPreviewSizeText = "100";
+        private string _rotatingPreviewDegreesPerFrameText = "60";
+        private static readonly string[] RotatingImageBackgroundNames = { "Transparent", "Black", "Dark Gray", "Gray", "White" };
         private readonly List<CelestialBody> _bodies = new List<CelestialBody>();
         private int _selectedBodyIndex;
         private double _altitudeMeters;
@@ -238,6 +246,13 @@ namespace VesselPlanner.UI
             private string _engineExcludeFilter = "";
             private string _tankFilter = "";
             private string _tankExcludeFilter = "";
+            private float _iconZoomFactor = 0.8f;
+            private float _rotatingImageZoomFactor = 1.0f;
+            private float _cameraYawDegrees = 45f;
+            private float _cameraPitchDegrees = 20f;
+            private int _rotatingImageBackground = 0;
+            private int _rotatingPreviewSize = 100;
+            private int _rotatingPreviewDegreesPerFrame = 60;
 
             public PlannerUiSettings()
             {
@@ -387,6 +402,48 @@ namespace VesselPlanner.UI
                 set { _tankExcludeFilter = value ?? string.Empty; }
             }
 
+            public float IconZoomFactor
+            {
+                get { return _iconZoomFactor; }
+                set { _iconZoomFactor = Mathf.Clamp(value, 0.1f, 5f); }
+            }
+
+            public float RotatingImageZoomFactor
+            {
+                get { return _rotatingImageZoomFactor; }
+                set { _rotatingImageZoomFactor = Mathf.Clamp(value, 0.1f, 5f); }
+            }
+
+            public float CameraYawDegrees
+            {
+                get { return _cameraYawDegrees; }
+                set { _cameraYawDegrees = Mathf.Clamp(value, 0f, 180f); }
+            }
+
+            public float CameraPitchDegrees
+            {
+                get { return _cameraPitchDegrees; }
+                set { _cameraPitchDegrees = Mathf.Clamp(value, 0f, 90f); }
+            }
+
+            public int RotatingImageBackground
+            {
+                get { return _rotatingImageBackground; }
+                set { _rotatingImageBackground = Mathf.Clamp(value, 0, RotatingImageBackgroundNames.Length - 1); }
+            }
+
+            public int RotatingPreviewSize
+            {
+                get { return _rotatingPreviewSize; }
+                set { _rotatingPreviewSize = Mathf.Clamp(value, 32, 256); }
+            }
+
+            public int RotatingPreviewDegreesPerFrame
+            {
+                get { return _rotatingPreviewDegreesPerFrame; }
+                set { _rotatingPreviewDegreesPerFrame = Mathf.Clamp(value, 1, 180); }
+            }
+
             private static string SettingsPath
             {
                 get
@@ -448,6 +505,13 @@ namespace VesselPlanner.UI
                     _analysisListHeightOffset = ReadFloat(settings, "AnalysisListHeightOffset", _analysisListHeightOffset);
                     _planningListHeightOffset = ReadFloat(settings, "PlanningListHeightOffset", _planningListHeightOffset);
                     MainWindowWidth = ReadFloat(settings, "MainWindowWidth", _mainWindowWidth);
+                    IconZoomFactor = ReadFloat(settings, "IconZoomFactor", _iconZoomFactor);
+                    RotatingImageZoomFactor = ReadFloat(settings, "RotatingImageZoomFactor", _rotatingImageZoomFactor);
+                    CameraYawDegrees = ReadFloat(settings, "CameraYawDegrees", _cameraYawDegrees);
+                    CameraPitchDegrees = ReadFloat(settings, "CameraPitchDegrees", _cameraPitchDegrees);
+                    RotatingImageBackground = ReadInt(settings, "RotatingImageBackground", _rotatingImageBackground);
+                    RotatingPreviewSize = ReadInt(settings, "RotatingPreviewSize", _rotatingPreviewSize);
+                    RotatingPreviewDegreesPerFrame = ReadInt(settings, "RotatingPreviewDegreesPerFrame", _rotatingPreviewDegreesPerFrame);
                     // 0.7.32 stored one persistence flag per category. Use those legacy
                     // flags as the defaults for the new per-field settings so existing users
                     // keep the behavior they already selected.
@@ -499,6 +563,13 @@ namespace VesselPlanner.UI
                     settings.SetValue("AnalysisListHeightOffset", _analysisListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("PlanningListHeightOffset", _planningListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("MainWindowWidth", _mainWindowWidth.ToString("0.##", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("IconZoomFactor", _iconZoomFactor.ToString("0.###", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("RotatingImageZoomFactor", _rotatingImageZoomFactor.ToString("0.###", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("CameraYawDegrees", _cameraYawDegrees.ToString("0.###", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("CameraPitchDegrees", _cameraPitchDegrees.ToString("0.###", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("RotatingImageBackground", _rotatingImageBackground.ToString(CultureInfo.InvariantCulture), true);
+                    settings.SetValue("RotatingPreviewSize", _rotatingPreviewSize.ToString(CultureInfo.InvariantCulture), true);
+                    settings.SetValue("RotatingPreviewDegreesPerFrame", _rotatingPreviewDegreesPerFrame.ToString(CultureInfo.InvariantCulture), true);
                     // Keep the old category flags for downgrade compatibility while the
                     // new keys control each include/exclude field independently.
                     settings.SetValue("SaveEngineFilters", _saveEngineFilter && _saveEngineExcludeFilter, true);
@@ -526,6 +597,13 @@ namespace VesselPlanner.UI
                 if (!float.TryParse(node.GetValue(key), NumberStyles.Float, CultureInfo.InvariantCulture, out value)) return defaultValue;
                 return float.IsNaN(value) || float.IsInfinity(value) ? defaultValue : value;
             }
+
+            private static int ReadInt(ConfigNode node, string key, int defaultValue)
+            {
+                if (node == null || !node.HasValue(key)) return defaultValue;
+                int value;
+                return int.TryParse(node.GetValue(key), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) ? value : defaultValue;
+            }
         }
 
         public bool Visible { get; set; } = false;
@@ -537,6 +615,8 @@ namespace VesselPlanner.UI
             _engineExcludeFilter = _uiSettings.SaveEngineExcludeFilter ? _uiSettings.EngineExcludeFilter : string.Empty;
             _tankNameFilter = _uiSettings.SaveTankFilter ? _uiSettings.TankFilter : string.Empty;
             _tankExcludeFilter = _uiSettings.SaveTankExcludeFilter ? _uiSettings.TankExcludeFilter : string.Empty;
+            SyncPartImageSettingText();
+            ApplyPartImageSettings();
             _window.width = Mathf.Clamp(_uiSettings.MainWindowWidth, MinWindowWidth, MaxWindowWidth);
             RefreshBodies();
             RefreshDatabases();
@@ -571,6 +651,10 @@ namespace VesselPlanner.UI
                 {
                     //DrawSolidEditorWindowBackground(_settingsWindow);
                     _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", ToolbarRegistration.winDarker, GUILayout.Width(600), GUILayout.Height(680));
+                }
+                else
+                {
+                    ComboBox.Close(RotatingImageBackgroundComboId);
                 }
                 ApplyPendingSplitterDrag();
                 ApplyPendingMainWindowWidthResize();
@@ -1492,6 +1576,7 @@ namespace VesselPlanner.UI
             GUILayout.Space(4);
             _settingsScroll = GUILayout.BeginScrollView(_settingsScroll);
             bool changed = false;
+            bool partImageSettingsChanged = false;
             if (_settingsTab == 0)
             {
                 GUILayout.Label("Choose which columns are shown in the candidate engine list.");
@@ -1673,6 +1758,89 @@ namespace VesselPlanner.UI
                 GUILayout.Label("Applies to the main VesselPlanner, its Settings window, and all Stage-By-Stage editor windows. Flight windows are unchanged.");
                 GUILayout.Label("Main window width: drag the grip on the right edge to resize from 1150 to 1850 px. The selected width is remembered.");
 
+                GUILayout.Space(12);
+                GUILayout.Label("Part images");
+                GUILayout.Label("Changes apply immediately to newly rendered list icons and rotating hover previews.");
+
+                float numericValue;
+                if (SettingsFloatField("ZoomFactor for icons", ref _iconZoomFactorText, _uiSettings.IconZoomFactor, 0.1f, 5f, out numericValue))
+                {
+                    _uiSettings.IconZoomFactor = numericValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+                if (SettingsFloatField("ZoomFactor for Rotating Images", ref _rotatingImageZoomFactorText, _uiSettings.RotatingImageZoomFactor, 0.1f, 5f, out numericValue))
+                {
+                    _uiSettings.RotatingImageZoomFactor = numericValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+                if (SettingsFloatField("Camera Yaw Degrees", ref _cameraYawDegreesText, _uiSettings.CameraYawDegrees, 0f, 180f, out numericValue))
+                {
+                    _uiSettings.CameraYawDegrees = numericValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+                if (SettingsFloatField("Camera Pitch Degrees", ref _cameraPitchDegreesText, _uiSettings.CameraPitchDegrees, 0f, 90f, out numericValue))
+                {
+                    _uiSettings.CameraPitchDegrees = numericValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+
+                int integerValue;
+                if (SettingsIntField("RotatingPreviewSize", ref _rotatingPreviewSizeText, _uiSettings.RotatingPreviewSize, 32, 256, out integerValue))
+                {
+                    _uiSettings.RotatingPreviewSize = integerValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+                if (SettingsIntField("Degrees per frame", ref _rotatingPreviewDegreesPerFrameText, _uiSettings.RotatingPreviewDegreesPerFrame, 1, 180, out integerValue))
+                {
+                    _uiSettings.RotatingPreviewDegreesPerFrame = integerValue;
+                    changed = true;
+                    partImageSettingsChanged = true;
+                }
+
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("Rotating Image Background", GUILayout.Width(220));
+                    int oldBackground = _uiSettings.RotatingImageBackground;
+                    int newBackground = ComboBox.Box(
+                        RotatingImageBackgroundComboId,
+                        oldBackground,
+                        RotatingImageBackgroundNames,
+                        this,
+                        220f,
+                        false,
+                        false);
+                    if (newBackground != oldBackground)
+                    {
+                        _uiSettings.RotatingImageBackground = newBackground;
+                        changed = true;
+                        partImageSettingsChanged = true;
+                    }
+                }
+                GUILayout.Label("Controls only the enlarged rotating hover preview. Static list icons remain transparent.");
+
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.Space(224);
+                    if (GUILayout.Button("Reset image settings", GUILayout.Width(160)))
+                    {
+                        _uiSettings.IconZoomFactor = 0.8f;
+                        _uiSettings.RotatingImageZoomFactor = 1.0f;
+                        _uiSettings.CameraYawDegrees = 45f;
+                        _uiSettings.CameraPitchDegrees = 20f;
+                        _uiSettings.RotatingImageBackground = 0;
+                        _uiSettings.RotatingPreviewSize = 100;
+                        _uiSettings.RotatingPreviewDegreesPerFrame = 60;
+                        SyncPartImageSettingText();
+                        changed = true;
+                        partImageSettingsChanged = true;
+                    }
+                }
+
                 GUILayout.Space(10);
                 GUILayout.Label("Detail pane sizes");
                 GUILayout.Label("In Planning, drag the grip between Selected Engine and Tanks to change the pane widths, and the grip above them to give the engine list more room. In Analyze Existing, drag the grip above Selected Engine to trade height between the candidate engine list and the pane below it. All are remembered between sessions.");
@@ -1687,11 +1855,111 @@ namespace VesselPlanner.UI
             }
             GUILayout.EndScrollView();
 
+            if (partImageSettingsChanged) ApplyPartImageSettings();
             if (changed) _uiSettings.Save();
             // Allow the Settings window to be dragged from any unused/background
             // area instead of limiting dragging to the title strip. Controls still
             // receive their normal clicks before DragWindow sees the event.
             GUI.DragWindow(new Rect(0f, 0f, _settingsWindow.width, _settingsWindow.height));
+        }
+
+        private void SyncPartImageSettingText()
+        {
+            _iconZoomFactorText = _uiSettings.IconZoomFactor.ToString("0.###", CultureInfo.InvariantCulture);
+            _rotatingImageZoomFactorText = _uiSettings.RotatingImageZoomFactor.ToString("0.###", CultureInfo.InvariantCulture);
+            _cameraYawDegreesText = _uiSettings.CameraYawDegrees.ToString("0.###", CultureInfo.InvariantCulture);
+            _cameraPitchDegreesText = _uiSettings.CameraPitchDegrees.ToString("0.###", CultureInfo.InvariantCulture);
+            _rotatingPreviewSizeText = _uiSettings.RotatingPreviewSize.ToString(CultureInfo.InvariantCulture);
+            _rotatingPreviewDegreesPerFrameText = _uiSettings.RotatingPreviewDegreesPerFrame.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private void ApplyPartImageSettings()
+        {
+            PartThumbnailCache.Configure(
+                _uiSettings.IconZoomFactor,
+                _uiSettings.RotatingImageZoomFactor,
+                _uiSettings.CameraYawDegrees,
+                _uiSettings.CameraPitchDegrees,
+                _uiSettings.RotatingImageBackground,
+                _uiSettings.RotatingPreviewSize,
+                _uiSettings.RotatingPreviewDegreesPerFrame);
+        }
+
+        private static bool SettingsFloatField(string label, ref string text, float currentValue, float minValue, float maxValue, out float newValue)
+        {
+            newValue = currentValue;
+            float sliderValue;
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label(label, GUILayout.Width(220));
+                string edited = GUILayout.TextField(text ?? string.Empty, GUILayout.Width(70));
+                if (!string.Equals(edited, text, StringComparison.Ordinal)) text = edited;
+                using (new GUILayout.VerticalScope(GUILayout.Width(180)))
+                {
+                    GUILayout.Space(5);
+                    sliderValue = GUILayout.HorizontalSlider(currentValue, minValue, maxValue, GUILayout.Width(180));
+                }
+                GUILayout.Label(minValue.ToString("0.###", CultureInfo.InvariantCulture) + " - " + maxValue.ToString("0.###", CultureInfo.InvariantCulture), GUILayout.Width(85));
+            }
+
+            // The slider wins when it moved this frame and keeps the text box synchronized.
+            if (Math.Abs(sliderValue - currentValue) > 0.0001f)
+            {
+                newValue = Mathf.Clamp(sliderValue, minValue, maxValue);
+                text = newValue.ToString("0.###", CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            float parsed;
+            if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed) || float.IsNaN(parsed) || float.IsInfinity(parsed))
+                return false;
+
+            float clamped = Mathf.Clamp(parsed, minValue, maxValue);
+            if (Math.Abs(clamped - parsed) > 0.0001f)
+                text = clamped.ToString("0.###", CultureInfo.InvariantCulture);
+
+            if (Math.Abs(clamped - currentValue) <= 0.0001f)
+                return false;
+
+            newValue = clamped;
+            return true;
+        }
+
+        private static bool SettingsIntField(string label, ref string text, int currentValue, int minValue, int maxValue, out int newValue)
+        {
+            newValue = currentValue;
+            float sliderValue;
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label(label, GUILayout.Width(220));
+                string edited = GUILayout.TextField(text ?? string.Empty, GUILayout.Width(70));
+                if (!string.Equals(edited, text, StringComparison.Ordinal)) text = edited;
+                using (new GUILayout.VerticalScope(GUILayout.Width(180)))
+                {
+                    GUILayout.Space(5);
+                    sliderValue = GUILayout.HorizontalSlider(currentValue, minValue, maxValue, GUILayout.Width(180));
+                }
+                GUILayout.Label(minValue.ToString(CultureInfo.InvariantCulture) + " - " + maxValue.ToString(CultureInfo.InvariantCulture), GUILayout.Width(85));
+            }
+
+            int sliderInt = Mathf.Clamp(Mathf.RoundToInt(sliderValue), minValue, maxValue);
+            if (sliderInt != currentValue)
+            {
+                newValue = sliderInt;
+                text = sliderInt.ToString(CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            int parsed;
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
+                return false;
+
+            int clamped = Mathf.Clamp(parsed, minValue, maxValue);
+            if (clamped != parsed) text = clamped.ToString(CultureInfo.InvariantCulture);
+            if (clamped == currentValue) return false;
+
+            newValue = clamped;
+            return true;
         }
 
         private bool SettingsColumnToggle(SolutionColumn column, string label)

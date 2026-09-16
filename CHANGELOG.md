@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.7.53
+
+- Changed Camera Yaw Degrees range to 0–180°.
+- Changed Camera Pitch Degrees range to 0–90°.
+- Applied the same limits to sliders, typed/persisted settings, and `PartThumbnailCache.Configure()`.
+- Updated `VesselPlanner.version` and assembly version to 0.7.53.0.
+
+## 0.7.52
+- Lowered all numeric part-image setting sliders by 5 pixels within their rows for better vertical alignment with the text fields and labels.
+- Updated `VesselPlanner.version` and assembly version to 0.7.52.0.
+
+## 0.7.51
+- Changed the **Rotating Image Background** Appearance setting from a row of buttons to a combo box.
+- Added a slider beside every numeric part-image setting while retaining the editable numeric text field.
+- Added saved **RotatingPreviewSize** control, default `100`, with a `32`–`256` pixel range; it controls the resolution used to pre-render each rotating hover-preview frame.
+- Added saved **Degrees per frame** control, range `1`–`180`, default `60`, replacing the hard-coded `60f` value passed by `PartThumbnailCache` to rotating-preview playback.
+- Reset image settings now also restores RotatingPreviewSize to `100` and Degrees per frame to `60`.
+- Updated `VesselPlanner.version` and assembly version to 0.7.51.0.
+
+## 0.7.50
+- Removed the user-facing `Alpha Channel` part-image setting.
+- Added `Rotating Image Background` in Settings → Appearance with Transparent, Black, Dark Gray, Gray, and White choices.
+- The background setting applies only to enlarged rotating hover previews; normal list thumbnails remain transparent.
+- Kept the Camera Pitch Degrees default/reset value at 20°.
+- Updated `VesselPlanner.version` and assembly version to 0.7.50.0.
+
+## 0.7.49
+- Changed the default Camera Pitch Degrees value from 40° to 20° for new/reset settings.
+- Added an `Alpha Channel` Appearance setting (0.0–1.0, default 1.0) controlling opacity of both static part icons and rotating hover-preview frames.
+- Alpha changes immediately invalidate the part-image caches so rendered images refresh without restarting KSP.
+- Updated `VesselPlanner.version` and assembly version to 0.7.49.0.
+
+## 0.7.48
+- Rebases the thumbnail/rotating-preview work on the user-provided 0.7.47 source.
+- Added saved Appearance settings for `ZoomFactor for icons`, `ZoomFactor for Rotating Images`, `Camera Yaw Degrees`, and `Camera Pitch Degrees`.
+- Static list thumbnails now use the configured icon zoom/yaw/pitch values; rotating hover frames use the configured rotating-image zoom/yaw/pitch values.
+- Changing any part-image setting immediately clears the thumbnail and rotating-preview caches so the new view is used without restarting KSP.
+- Added a Reset image settings button restoring 0.8 icon zoom, 1.0 rotating zoom, 45° yaw, and 40° pitch.
+- Updated `VesselPlanner.version` and assembly version to 0.7.48.0.
+
 ## 0.7.46
 - Changed enlarged engine/tank hover previews from static images to slowly rotating 3D part previews, matching the behavior of KSP's editor part list.
 - The rotating preview uses the same exact `AvailablePart`/`partUrl` resolution as the list thumbnail, rotates around the part's visual bounds center, and is rendered off-screen without affecting the editor scene.
