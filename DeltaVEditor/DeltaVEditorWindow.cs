@@ -322,7 +322,7 @@ namespace DeltaVEditor
                                 GUI.backgroundColor = ascentValid ? oldColor : Color.red;
                                 row.sortOrder_str = GUILayout.TextField(row.sortOrder_str, GUILayout.Width(90));
 
-                                if (GUILayout.Button("X", GUILayout.Width(30)))
+                                    if (GUILayout.Button("X", GUILayout.Width(30)))
                                 {
                                     _rows.RemoveAt(i);
                                     i--;

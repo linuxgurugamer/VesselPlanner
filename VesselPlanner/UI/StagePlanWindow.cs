@@ -279,7 +279,7 @@ namespace VesselPlanner.UI
                 _window.width = minimumPlanWidth;
 
             // _planner.DrawSolidBackground(_window, true);
-            _window = ClickThruBlocker.GUILayoutWindow(19041970, _window, DrawPlanWindow, "Stage-By-Stage Plan", ToolbarRegistration.winLighter,
+            _window = ClickThruBlocker.GUILayoutWindow(19041970, _window, DrawPlanWindow, "Stage-By-Stage Plan", RegisterToolbar.winLighter,
                 GUILayout.MinWidth(minimumPlanWidth), GUILayout.MinHeight(420f));
 
             if (_newStageVisible)
@@ -313,14 +313,14 @@ namespace VesselPlanner.UI
             if (_loadVisible)
             {
                 // _planner.DrawSolidBackground(_loadWindow);
-                _loadWindow = ClickThruBlocker.GUILayoutWindow(19041972, _loadWindow, DrawLoadWindow, "Load Plan", ToolbarRegistration.winDarker,
+                _loadWindow = ClickThruBlocker.GUILayoutWindow(19041972, _loadWindow, DrawLoadWindow, "Load Plan", RegisterToolbar.winDarker,
                     GUILayout.Width(360f), GUILayout.Height(380f));
             }
 
             if (_missionSelectVisible)
             {
                 _missionSelectWindow = ClickThruBlocker.GUILayoutWindow(19041973, _missionSelectWindow, DrawMissionSelectWindow,
-                    "Select Mission Plan", ToolbarRegistration.winDarker, GUILayout.Width(420f), GUILayout.Height(390f));
+                    "Select Mission Plan", RegisterToolbar.winDarker, GUILayout.Width(420f), GUILayout.Height(390f));
             }
 
             if (_bringPlanToFrontRequested && !_newStageVisible && !_loadVisible && !_missionSelectVisible)
@@ -491,7 +491,8 @@ namespace VesselPlanner.UI
                 GUILayout.Label("Vessel", GUILayout.Width(70));
                 _vesselNameText = GUILayout.TextField(_vesselNameText, GUILayout.Width(220));
                 GUILayout.FlexibleSpace();
-                if (GUILayout.Button("×", GUILayout.Width(30))) Visible = false;
+                if (GUI.Button(new Rect(_window.width - 32, 2, 30, 20), "×", RegisterToolbar.styleXButtonSettings))
+                    Visible = false;
             }
 
             using (new GUILayout.HorizontalScope())

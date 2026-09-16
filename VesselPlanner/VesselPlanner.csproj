@@ -73,7 +73,7 @@
     <Compile Include="KSP\KspResourceVolume.cs" />
     <Compile Include="KSP\PartThumbnailCache.cs" />
     <Compile Include="KSP\SavedAssemblyCatalog.cs" />
-    <Compile Include="ToolbarRegistration.cs" />
+    <Compile Include="RegisterToolbar.cs" />
     <Compile Include="UI\WindowSkin.cs" />
     <Compile Include="UI\ComboBox.cs" />
     <Compile Include="UI\MissionPlannerPage.cs" />

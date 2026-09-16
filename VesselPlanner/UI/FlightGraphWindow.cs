@@ -6,8 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
-using VesselPlanner.Flight;
 using VesselPlanner.Core;
+using VesselPlanner.Flight;
 
 namespace VesselPlanner.UI
 {
@@ -143,7 +143,7 @@ namespace VesselPlanner.UI
                 float requestedWidth = _window.width;
                 float requestedHeight = _window.height;
                 //DrawSolidFlightWindowBackground(_window);
-                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041969, _window, DrawWindow, "VesselPlanner - Flight Data", ToolbarRegistration.winDarker,
+                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041969, _window, DrawWindow, "VesselPlanner - Flight Data", RegisterToolbar.winDarker,
                     GUILayout.Width(requestedWidth), GUILayout.Height(requestedHeight));
                 // GUILayout must not grow the graph window to satisfy content. The right-edge grip changes width only; height stays fixed.
                 _window.x = drawn.x;
@@ -162,7 +162,7 @@ namespace VesselPlanner.UI
                 KeepSizeOnScreen(ref _settingsWindow, MinSettingsWidth, MinSettingsHeight);
                 float requestedWidth = _settingsWindow.width;
                 float requestedHeight = _settingsWindow.height;
-                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041970, _settingsWindow, DrawSettingsWindow, "Flight Plot Settings", ToolbarRegistration.winDarker,
+                Rect drawn = ClickThruBlocker.GUILayoutWindow(19041970, _settingsWindow, DrawSettingsWindow, "Flight Plot Settings", RegisterToolbar.winDarker,
                     GUILayout.Width(requestedWidth), GUILayout.Height(requestedHeight));
                 _settingsWindow.x = drawn.x;
                 _settingsWindow.y = drawn.y;
@@ -237,7 +237,10 @@ namespace VesselPlanner.UI
                 GUILayout.FlexibleSpace();
                 GUILayout.Label(_manager.Samples.Count.ToString(CultureInfo.InvariantCulture) + " samples", GUILayout.Width(90));
                 if (GUILayout.Button("Settings", GUILayout.Width(80))) SettingsVisible = !SettingsVisible;
-                if (GUILayout.Button("×", GUILayout.Width(30))) Visible = false;
+
+
+                if (GUI.Button(new Rect(_window.width - 32, 2, 30, 20), "×", RegisterToolbar.styleXButtonSettings))
+                    Visible = false;
             }
 
             GUILayout.Label("The graph fills from left to right, then scrolls as new samples arrive. Altitude uses the configured chart top; other series use this vessel's recorded historical maximum as their chart top.");
@@ -343,7 +346,8 @@ namespace VesselPlanner.UI
             {
                 GUILayout.Label("Select the telemetry series to plot. Data is collected for all available sources while plotting.");
                 GUILayout.FlexibleSpace();
-                if (GUILayout.Button("×", GUILayout.Width(30))) SettingsVisible = false;
+                if (GUI.Button(new Rect(_settingsWindow.width - 32, 2, 30, 20), "×", RegisterToolbar.styleXButtonSettings))
+                    SettingsVisible = false;
             }
 
             using (new GUILayout.HorizontalScope())

@@ -663,7 +663,7 @@ namespace VesselPlanner.UI
                 //DrawSolidEditorWindowBackground(_window);
                 // Width is controlled explicitly by the right-edge resize grip.  Fixing the
                 // GUILayout width prevents child controls from growing the outer window.
-                _window = ClickThruBlocker.GUILayoutWindow(19041968, _window, DrawWindow, "VesselPlanner", ToolbarRegistration.winDarker, GUILayout.Width(_window.width), GUILayout.MinHeight(MinWindowHeight));
+                _window = ClickThruBlocker.GUILayoutWindow(19041968, _window, DrawWindow, "VesselPlanner", RegisterToolbar.winDarker, GUILayout.Width(_window.width), GUILayout.MinHeight(MinWindowHeight));
                 if (_settingsVisible)
                 {
                     // The KSP skin uses taller controls than the alternate Unity skin.
@@ -673,7 +673,7 @@ namespace VesselPlanner.UI
                     _settingsWindow.width = SettingsWindowWidth;
                     _settingsWindow.height = settingsHeight;
                     //DrawSolidEditorWindowBackground(_settingsWindow);
-                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", ToolbarRegistration.winDarker, GUILayout.Width(SettingsWindowWidth), GUILayout.Height(settingsHeight));
+                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", RegisterToolbar.winDarker, GUILayout.Width(SettingsWindowWidth), GUILayout.Height(settingsHeight));
                 }
                 else
                 {
@@ -807,7 +807,7 @@ namespace VesselPlanner.UI
                     if (_deltaVTableMode) DeltaVTable.Reload();
                     RecalculateForFilterChange();
                 }
-                if (GUILayout.Button("×", GUILayout.Width(30)))
+                if (GUI.Button(new Rect(_window.width - 32, 2, 30, 20), "×", RegisterToolbar.styleXButtonSettings))
                 {
                     _missionPlanner.CloseEntry();
                     Visible = false;
@@ -1619,7 +1619,8 @@ namespace VesselPlanner.UI
                 if (GUILayout.Toggle(_settingsTab == 3, "Filters", "Button", GUILayout.Height(28))) _settingsTab = 3;
                 if (GUILayout.Toggle(_settingsTab == 4, "Appearance", "Button", GUILayout.Height(28))) _settingsTab = 4;
                 GUILayout.FlexibleSpace();
-                if (GUILayout.Button("×", GUILayout.Width(30))) _settingsVisible = false;
+                if (GUI.Button(new Rect(_settingsWindow.width - 32, 2, 30, 20), "×", RegisterToolbar.styleXButtonSettings))
+                    _settingsVisible = false;
             }
             GUILayout.Space(4);
             _settingsScroll = GUILayout.BeginScrollView(_settingsScroll);

@@ -5,12 +5,12 @@ using VesselPlanner.UI;
 namespace VesselPlanner
 {
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
-    public sealed class ToolbarRegistration : MonoBehaviour
+    public sealed class RegisterToolbar : MonoBehaviour
     {
-
         internal static Texture2D texDarker, texLighter;
         internal static GUIStyle winDarker, winLighter;
         bool initialized = false;
+        internal static GUIStyle styleXButtonSettings;
 
         void InitWinTextures()
         {
@@ -43,6 +43,18 @@ namespace VesselPlanner
             winLighter.active.background =
             winLighter.focused.background =
             winLighter.normal.background = texLighter;
+
+            styleXButtonSettings = new GUIStyle(GUI.skin.button);
+            styleXButtonSettings.normal.textColor = GUI.skin.button.normal.textColor;
+            styleXButtonSettings.hover.textColor = GUI.skin.button.hover.textColor;
+
+            styleXButtonSettings.name = "ButtonSettings";
+            styleXButtonSettings.padding = new RectOffset(1, 1, 1, 1);
+            styleXButtonSettings.onNormal.background = styleXButtonSettings.active.background;
+            styleXButtonSettings.alignment = TextAnchor.MiddleCenter;
+            styleXButtonSettings.normal.textColor = new Color32(177, 193, 205, 255);
+            styleXButtonSettings.fontStyle = FontStyle.Bold;
+
         }
 
         private void Start()

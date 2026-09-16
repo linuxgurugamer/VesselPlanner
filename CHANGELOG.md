@@ -1,4 +1,8 @@
-﻿## 0.7.75
+﻿## 0.7.76
+- Updated the "x" boxes to be at the top right of the windows.
+- Renamed ToolbarRegistration to RegisterToolbar
+
+## 0.7.75
 - Added `Manual/VesselPlanner-Analyze-Existing-Tutorial.docx`, covering stage selection, current-resource simulation, environment/candidate filters, result columns, Selected Engine details, part placement, layout controls, examples, and troubleshooting.
 - Added `Manual/VesselPlanner-Planning-Tutorial.docx`, covering payload and delta-v basis, optimization modes, body/altitude behavior, candidate results, actual tank-set selection, placement actions, Delta-V Table/Mission Planner integration, examples, and troubleshooting.
 - Updated `VesselPlanner.version` and assembly version to 0.7.75.0.

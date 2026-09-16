@@ -241,7 +241,7 @@ namespace VesselPlanner.UI
                 _entryWindow.width = entryWidth;
                 _entryWindow.height = Mathf.Min(entryHeight, Mathf.Max(430f, Screen.height - 40f));
                 _entryWindow = ClickThruBlocker.GUILayoutWindow(EntryWindowId, _entryWindow, DrawEntryContents,
-                    _editIndex >= 0 ? "Edit Mission Step" : "Add Mission Step", ToolbarRegistration.winDarker ?? GUI.skin.window,
+                    _editIndex >= 0 ? "Edit Mission Step" : "Add Mission Step", RegisterToolbar.winDarker ?? GUI.skin.window,
                     GUILayout.Width(entryWidth), GUILayout.Height(_entryWindow.height));
                 _entryWindow.x = Mathf.Clamp(_entryWindow.x, 0f, Mathf.Max(0f, Screen.width - _entryWindow.width));
                 _entryWindow.y = Mathf.Clamp(_entryWindow.y, 0f, Mathf.Max(0f, Screen.height - _entryWindow.height));
@@ -257,7 +257,7 @@ namespace VesselPlanner.UI
                 }
 
                 _loadWindow = ClickThruBlocker.GUILayoutWindow(LoadWindowId, _loadWindow, DrawMissionLoadWindow,
-                    "Load Mission Plan", ToolbarRegistration.winDarker ?? GUI.skin.window,
+                    "Load Mission Plan", RegisterToolbar.winDarker ?? GUI.skin.window,
                     GUILayout.Width(420), GUILayout.Height(390));
                 _loadWindow.x = Mathf.Clamp(_loadWindow.x, 0f, Mathf.Max(0f, Screen.width - _loadWindow.width));
                 _loadWindow.y = Mathf.Clamp(_loadWindow.y, 0f, Mathf.Max(0f, Screen.height - _loadWindow.height));
