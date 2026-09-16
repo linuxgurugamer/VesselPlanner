@@ -1,11 +1,331 @@
 # Changelog
 
-## 0.6.44
+## 0.7.46
+- Changed enlarged engine/tank hover previews from static images to slowly rotating 3D part previews, matching the behavior of KSP's editor part list.
+- The rotating preview uses the same exact `AvailablePart`/`partUrl` resolution as the list thumbnail, rotates around the part's visual bounds center, and is rendered off-screen without affecting the editor scene.
+- Kept normal list thumbnails static and cached; only the currently hovered enlarged preview is animated.
+- Updated `VesselPlanner.version` and assembly version to 0.7.46.0.
 
-- Added a sortable **Cost Eff.** column to the Planning Tanks list.
-- Tank cost efficiency is calculated as kilograms of capacity for the selected engine's required propellants divided by the total cost of the suggested tank combination in Funds.
-- Using propellant mass instead of raw resource units keeps the efficiency value comparable across stock and mod resources with different unit scales.
-- Updated README and manuals for the tank cost-efficiency metric.
+## 0.7.45
+- Added a larger high-resolution part image preview when hovering over engine and tank thumbnails in Planning, Analyze Existing, and Stage-By-Stage lists.
+- Hover previews render separately from the normal 64 px thumbnail cache so list drawing remains lightweight.
+- Updated `VesselPlanner.version` and assembly version to 0.7.45.0.
+
+## 0.7.44
+
+- Fixed incorrect engine and tank thumbnails when more than one loaded KSP part shares the same internal part name.
+- Engine candidates, tank candidates, and Analyze Existing installed-engine rows now carry the exact `AvailablePart.partUrl`; the thumbnail cache resolves and keys by that URL first, falling back to the legacy internal-name lookup only when no URL is available.
+- Stage-By-Stage saved plans remain compatible and continue to use internal-name lookup because older plan files do not store part URLs.
+
+## 0.7.43
+
+- Added cached KSP part thumbnails to the shared candidate-engine table used by both Planning and Analyze Existing.
+- Added up to three tank-type thumbnails to each mixed tank-set row in Planning.
+- Added part thumbnails to Analyze Existing's Current engines table; the stage scanner now carries each installed engine's internal KSP part name for thumbnail lookup.
+- Reused the existing `PartThumbnailCache`; no second thumbnail-rendering path was added.
+
+## 0.7.42
+
+- Fixed Stage-By-Stage part thumbnails rendering invisible because KSP editor-icon shaders do not reliably write alpha when rendered by VesselPlanner's off-screen camera.
+- Thumbnail generation now renders over an opaque chroma-key background and explicitly constructs the output alpha channel before caching the texture.
+
+## 0.7.41
+
+- Added cached KSP part thumbnails to engine and tank rows in the Stage-By-Stage stage contents list.
+- Thumbnails are rendered from each part's `AvailablePart.iconPrefab`, cached as 64×64 textures, and displayed at 40×40 beside the corresponding row.
+- Thumbnail rendering is lazy and repaint-only so it does not disturb IMGUI layout; cached textures are released when the planner is disposed.
+
+## 0.7.40
+
+- Added a bundled `RSS.csv` Mission Planner delta-v table under `GameData/VesselPlanner/PluginData/DeltaVTables`.
+- Normalized the supplied Real Solar System data into VesselPlanner body self rows plus exact route rows with integer sort orders.
+- Replaced malformed capture-node origins with their actual parent bodies (Jupiter, Saturn, Uranus, and Neptune), corrected `Amelthea` to `Amalthea` and `MakeMake` to `Makemake`, and omitted Geostationary/L1/L2 pseudo-destinations so they do not appear as celestial bodies.
+- Interplanetary `total_capture_dV` values now include departure, capture, and low-orbit insertion so Mission Planner receives the complete route requirement.
+- Parent-to-moon rows keep the supplied full moon-to-parent reverse insertion value in `capture_dV` so `Return From A Moon` works with the RSS hierarchy.
+- Added explicit self-row ascent/landing data, including a 29,705 m/s Venus ascent value from the public Solar System delta-v map while retaining the supplied 270 m/s landing allowance.
+
+## 0.7.39
+
+- Added a bundled `GPP.csv` Mission Planner delta-v table under `GameData/VesselPlanner/PluginData/DeltaVTables`.
+- Restructured the supplied Galileo's Planet Pack data to use body self rows plus exact route rows with integer sort orders and the current GPP body hierarchy.
+- Corrected map-derived values where needed, including Ceti low-orbit insertion (225 m/s), Argo surface/low-orbit (205 m/s), Julia surface/low-orbit (85 m/s), and the Gauss capture path (230 + 1930 m/s).
+- Interplanetary `total_capture_dV` values now represent the complete low-Gael-orbit to low-destination-orbit transfer total used by Mission Planner.
+- Parent-to-moon route rows retain the full reverse low-orbit return value in `capture_dV` so `Return From A Moon` works with GPP's multi-leg moon transfers.
+
+## 0.7.38
+
+- Added a bundled `JNSQ.csv` Mission Planner delta-v table under `GameData/VesselPlanner/PluginData/DeltaVTables`.
+- Restructured the supplied JNSQ data to match VesselPlanner's current CSV schema: body launch/landing metadata now uses self rows, sort orders are integers, and moon parent metadata matches the JNSQ hierarchy.
+- Corrected JNSQ values against the official map where needed, including Minmus transfer (1570 m/s), Huygen ascent (1875 m/s), and Moho plane change (2810 m/s).
+- Interplanetary `total_capture_dV` values use the lower/ideal JNSQ map Total so Mission Planner's Transfer To Another Planet suggestion reads a complete route value rather than only destination insertion.
+
+## 0.7.37
+
+- Fixed a compile error in `EditorStageScanner` left by the 0.7.36 CommonRoutines refactor: the final engine-mass fallback now calls `CommonRoutines.GetDryPartMass`.
+- Re-scanned all moved CommonRoutines helpers for stale unqualified call sites; only intentional local compatibility/window wrappers remain.
+
+## 0.7.36
+
+- Expanded `VesselPlanner.Core.CommonRoutines` and removed duplicated reusable helpers across the project.
+- Centralized ConfigNode string/double/bool reads, invariant double parsing, case-insensitive unique string/bulkhead-profile handling, player-part availability checks, dry part-mass calculation, window clamping, stage-solution failure handling, and plan filename sanitizing.
+- Updated Mission Planner, Stage-By-Stage, Planning/Analyze Existing, engine/tank databases, saved-subassembly scanning, stage scanning, and both stage solvers to use the shared routines.
+- Kept Unity lifecycle callbacks and cache-specific reload wrappers local because they depend on class instance/static state rather than representing reusable helpers.
+
+## 0.7.35
+
+- Added `VesselPlanner.Core.CommonRoutines` for shared helper methods.
+- Moved `FormatManeuver` from `MissionPlannerPage` into `CommonRoutines` and updated both Mission Planner and Stage-By-Stage to use the shared formatter.
+
+## 0.7.34
+
+- Moved the tank **Filter** and **Exclude** text fields onto the same row, matching the engine-filter layout.
+- While a Stage-By-Stage stage is being built, tank suggestion action buttons now read **Add to Stage** for both single-type and mixed tank sets.
+
+## 0.7.33
+
+- Split filter persistence into four independent settings: engine include Filter, engine Exclude, tank include Filter, and tank Exclude.
+- Each filter field now autosaves/restores only when its own persistence setting is enabled. Disabling one clears only that field's saved value and leaves the other filter in the same category unchanged.
+- Existing 0.7.32 combined engine/tank persistence settings migrate to the corresponding two new per-field settings on first load.
+
+## 0.7.32
+
+- Renamed the engine-name text field label to **Filter**.
+- Added separate **Exclude** fields for engines and tank suggestions.
+- Engine and tank Filter/Exclude fields now accept multiple comma-separated terms. Filter terms use OR matching; any matching Exclude term removes the candidate.
+- Filter values are saved automatically while persistence is enabled.
+- Added **Settings → Filters** with independent options to save/restore the engine Filter/Exclude pair and the tank Filter/Exclude pair. Both options default to enabled.
+
+## 0.7.31
+
+- Set the Add/Edit Mission Step **Source body** display to `GUILayout.Height(30)`.
+- Selecting a saved Mission Planner plan in Stage-By-Stage now initializes the Stage-By-Stage plan name from the mission plan name; the name remains editable afterward.
+
+## 0.7.30
+
+- Increased the Stage-By-Stage New/Edit Stage dialog height slightly in both Engines & Tanks and Subassemblies modes.
+- Mission Planner now starts with the mission name **Unnamed Mission**.
+- The Mission Planner row delete **X** is now drawn in red.
+- **Return From A Moon** now derives its automatic Needed Δv from the active delta-v CSV: moon ascent/surface-to-orbit Δv plus the parent-to-moon row's capture Δv, which is used as the reverse moon-escape leg.
+- Maneuver dropdown entries now use readable spaced labels while keeping the existing enum values and saved-file compatibility.
+
+## 0.7.29
+
+- Moved the Stage-By-Stage **Core burns too** booster-layout toggle onto its own line below **Side Boosters**. **Radial decouplers** remains on the following conditional line when Side Boosters is enabled.
+
+## 0.7.28
+
+- Added Stage-By-Stage Engines & Tanks booster-layout options: **Side Boosters**, **Core burns too**, and a conditional **Radial decouplers** toggle when Side Boosters is enabled. The layout choices are saved with the stage and shown in the stage summary.
+- ComboBox popup entries now use the active button font, size, and style so dropdown text matches normal buttons.
+- Tank analysis now evaluates tank sets containing up to three different tank types. Every tank type in a suggested set must share the same KSP bulkhead profile, and Stage-By-Stage captures the complete selected set.
+- Engine display names now pass through KSP's `Localizer`, including engines detected in Analyze Existing, so localized part titles are shown when available.
+
+## 0.7.27
+
+- Mission Planner steps are now mutually exclusive **Engines & Tanks** or **Subassemblies** steps, matching the Stage-By-Stage stage-type model.
+- Engines & Tanks steps contain maneuver/body/route/delta-v data only; Subassemblies steps contain one or more saved subassemblies with Count and per-copy Decoupler options only.
+- Clicking a Subassemblies mission step in Stage-By-Stage now opens a Subassemblies stage directly instead of mixing its mass into an engine/tank stage.
+- Renamed Mission Planner entry actions from maneuver-centric wording to **Mission Step** where appropriate and updated documentation.
+
+## 0.7.26
+
+- Changed the Mission Planner **Add Subassemblies** editor to match the Stage-By-Stage Subassemblies workflow: the same available/selected list layout, per-line Count and Decoupler controls, duplicate-add count behavior, Remove placement, mass details, and validation.
+- Increased the expanded Add/Edit Mission Maneuver height to accommodate the Stage-By-Stage-sized subassembly lists.
+- Updated README and manuals for the unified subassembly workflow.
+
+## 0.7.25
+
+- Renamed user-facing Mission Planner and Stage-By-Stage **Assembly/Assemblies** labels to **Subassembly/Subassemblies** to match KSP terminology.
+- Moved **Mission Planner** and **Stage-By-Stage** to the left side of the main mode-button row, followed by an 18 px gap before **Analyze Existing** and **Planning**.
+- Updated README and manuals for the terminology and mode-button layout changes.
+
+## 0.7.24
+
+- Mission Planner assembly rows now use flexible spacing before **Remove**, keeping the remove button aligned at the far right of the row.
+- Increased the horizontal gap after the Mission Planner Assembly **Add** toggle from 10 px to 20 px.
+- Add/Edit Mission Maneuver can now be dragged from anywhere in the window, not only the title strip.
+- Increased the Stage-By-Stage Subassemblies New/Edit Stage dialog height and reserved more bottom space so the validation/status line remains fully visible when no subassembly has been selected.
+- Updated README and manuals for these UI refinements.
+
+## 0.7.23
+
+- Increased the Stage-By-Stage Subassemblies New/Edit Stage dialog height so the stage-mass and Add/Save/Cancel controls are no longer clipped at the bottom.
+- Mission Planner Assembly **Add** now supports one or more saved KSP subassemblies instead of a single selection. Each selected assembly has its own whole-number **Count** and independent **Decoupler** toggle.
+- Mission-plan files now save each assembly's file/name, stored unit mass, count, decoupler selection, and per-copy decoupler mass. Mission files from 0.7.20/0.7.21 with a single assembly are converted automatically when loaded.
+- Mission-linked Engines & Tanks stages preserve all counted mission assemblies and their per-copy decouplers, show them in the stage list, include their combined mass in the stage solve, and propagate that mass into every lower stage.
+- Updated README and manuals for the expanded Mission Planner assembly workflow and the taller Subassemblies stage dialog.
+
+## 0.7.22
+
+- Stage-By-Stage **New Stage/Edit Stage** now has two mutually exclusive stage types: **Engines & Tanks** and **Subassemblies**.
+- **Subassemblies** stages can contain one or more saved KSP subassemblies. Each selected subassembly has its own quantity field and independent **Decoupler** toggle.
+- When a subassembly's Decoupler option is enabled, the decoupler quantity follows the subassembly count. The reference mass is chosen from the subassembly root part's bulkhead profile(s) using `decouplerMasses.cfg`.
+- Subassembly and per-copy decoupler mass are included in the stage mass and therefore in the payload carried by every lower stage.
+- Subassembly-stage contents, counts, decoupler selections, and masses are saved in Stage-By-Stage plan files. Plans from earlier versions load as **Engines & Tanks** stages for backward compatibility.
+- Updated README and manuals for the new Stage-By-Stage stage types and subassembly-stage workflow.
+
+## 0.7.21
+
+- Added 10 px of horizontal spacing to the right of the Mission Planner Assembly **Add** toggle so the assembly selector no longer sits directly against the toggle.
+- Updated README and manuals for the Mission Planner Assembly control layout.
+
+## 0.7.20
+
+- Mission Planner maneuver entries now include an optional **Assembly** control. Enabling **Add** shows the saved KSP subassemblies from the current save and displays each assembly's calculated wet mass.
+- Mission plans now save the selected assembly file/name and mass for each mission step. Older mission plans load unchanged with no assembly selected.
+- Mission-linked Stage-By-Stage stages copy the selected assembly from the mission step, show it in the stage requirements/list, and include its mass as fixed stage dry mass during engine/tank sizing.
+- Assembly mass is also included when completed upper stages become payload for lower stages, so the added mass propagates through the rest of the vehicle plan.
+- Added saved-subassembly mass scanning from `saves/<current save>/Subassemblies/*.craft`, including loaded resource mass and craft `modMass` adjustments.
+- Updated README and manuals for Mission Planner assembly selection and Stage-By-Stage assembly mass handling.
+
+## 0.7.19
+
+- Stage-By-Stage stage part lists now display tanks first and engines second. Saved part order and placement behavior are unchanged.
+- When **Add decoupler mass** is enabled and the calculated decoupler mass is greater than zero, the stage list now shows a **decoupler** item between the tanks and engines, including its reference mass.
+- Updated README and manuals for the stage-list display order and decoupler item.
+
+## 0.7.18
+
+- When **Calculate** is clicked while editing an existing Stage-By-Stage stage, Planning now switches its body/environment to the last body referenced in the selected or linked mission plan before solving the stage.
+- For a final interplanetary transfer, the transfer destination is treated as the mission plan's last body.
+- Updated README and manuals for mission-aware body selection during stage editing.
+
+## 0.7.17
+
+- Stage-By-Stage Mission Plan maneuver buttons are taller for easier reading and selection.
+- Added a live text filter above the Planning **Tanks** list; it matches both the displayed tank name and internal part name.
+- Tank candidates are now limited to storage parts that have both `top` and `bottom` attach nodes, excluding radial/one-ended storage parts from tank selection.
+- Updated README and manuals for the taller mission buttons, tank filtering, and stack-node requirement.
+
+## 0.7.16
+
+- Mission Planner **Landing** now defaults its body to the most recently specified body in earlier mission steps, including a previous transfer destination; the user can still choose a different body.
+- Stage-By-Stage mission sidebar text is now left-justified.
+- Each Stage-By-Stage stage now shows its linked **Mission step N: maneuver** line. Mission-plan name, step number, and maneuver are saved with the stage plan.
+- Clicking a mission step that already has a linked stage now opens that stage in **Edit Stage** instead of creating another stage.
+- Fixed a single manually selected Bulkhead profile being combined with an automatically preset previous profile: the first manual profile choice now replaces the automatic preset, while later choices can still intentionally make a multi-profile selection.
+- Updated README and manuals for mission-linked stages, Landing body defaults, and Bulkhead profile selection behavior.
+
+## 0.7.15
+
+- Mission Planner now has a **Mission name** field plus **Save** and **Load** buttons. Mission plans are saved under `GameData/VesselPlanner/PluginData/MissionPlans` using the mission name as the `.cfg` filename.
+- Added shared mission-plan persistence for maneuver kind, body/route, required delta-v, and ASL/VAC basis.
+- Stage-By-Stage now has a **Select Mission Plan** button that loads one of the saved Mission Planner files without replacing the current stage plan.
+- When a mission plan is selected, its maneuvers are shown in reverse order in a list along the left side of the Stage-By-Stage window.
+- Clicking a mission maneuver opens a new stage with that maneuver's target delta-v and delta-v basis prefilled.
+- Updated README and manuals for mission-plan save/load and Stage-By-Stage mission integration.
+
+## 0.7.14
+
+- Restored the New/Edit Stage **Bulkhead profiles** control to the original inline multi-select dropdown/list used before 0.7.11.
+- Removed the Bulkhead-specific shared-ComboBox, modal-popup, and late/topmost-popup workaround code; New/Edit Stage remains modal while its inline profile list is open.
+- Removed all embedded images from the main Word instruction manual and replaced each former figure with a descriptive `[IMAGE PLACEHOLDER: ...]` tag.
+- Updated README and manuals for the restored Bulkhead profile selector and image-placeholder manual format.
+
+## 0.7.13
+
+- Fixed the New/Edit Stage Bulkhead profiles ComboBox failing to appear after the 0.7.12 modal-popup change.
+- Removed the second-modal-window approach. While the bulkhead ComboBox is open, New/Edit Stage temporarily renders as a normal click-through-protected window and the shared ComboBox popup is drawn in a late/topmost pass.
+- When the popup closes, New/Edit Stage immediately returns to modal behavior. The existing multi-profile toggle behavior is unchanged.
+- Updated README and manuals for the corrected Bulkhead ComboBox layering behavior.
+
+## 0.7.12
+
+- Fixed the New/Edit Stage Bulkhead profiles ComboBox appearing behind the modal stage dialog and not receiving mouse input.
+- Added modal-popup support to the shared `ComboBox` implementation.
+- The Stage-By-Stage Bulkhead profiles selector now opens its ComboBox as a modal popup drawn after the New/Edit Stage window, keeping it above the dialog and responsive while preserving the existing multi-profile toggle behavior.
+- Updated README and manuals for the modal Bulkhead ComboBox behavior.
+
+## 0.7.11
+
+- Replaced the Analyze Existing Planet/body dropdown with the shared `ComboBox` implementation used by Mission Planner and Planning.
+- Analyze Existing body changes continue to clamp altitude to the selected body's atmosphere and immediately recalculate environment-dependent results.
+- Replaced the New/Edit Stage Bulkhead profiles inline dropdown/list with the shared `ComboBox` implementation.
+- The Bulkhead profiles ComboBox preserves multi-profile selection by toggling one profile per selection, marks selected profiles with `[x]`, and includes a `Clear selection` entry.
+- Updated README and manuals for the shared ComboBox selectors.
+
+## 0.7.10
+
+- Replaced the Planning screen Planet dropdown with the shared `ComboBox` implementation used by Mission Planner.
+- Planning body changes continue to clamp altitude to the selected body and immediately recalculate environment-dependent results.
+- Analyze Existing retains its existing body-selector overlay; the change is scoped to Planning.
+- Updated README and manuals for the Planning ComboBox selector.
+
+## 0.7.9
+
+- Added automatic planet-pack detection for Mission Planner using `PlanetPackHeuristics`.
+- `DeltaVTable.planetPack` is now a runtime string instead of the hard-coded `Stock` constant.
+- Mission Planner detects the active pack before loading delta-v data; known packs use the `PlanetPackKind` name and a custom single pack uses its detected GameData folder name.
+- Delta-v tables are loaded from `GameData/VesselPlanner/PluginData/DeltaVTables/<packName>.csv`.
+- Development builds now copy all CSV files in `DeltaVTables`, not only `Stock.csv`.
+- Updated README and manuals for planet-pack-aware delta-v table selection.
+
+## 0.7.8
+
+- Fixed CS0117 in Mission Planner: clipboard-selector disabling no longer accesses the private ComboBox backing dictionary.
+- Added `ComboBox.Close(id)` as the supported way to close an open popup when its control becomes disabled.
+- Retained the 0.7.7 clipboard availability behavior.
+
+## 0.7.7
+
+- Mission Planner now disables the **Clipboard Δv** selector when the clipboard does not contain usable transfer data for the currently selected destination/route.
+- The selector automatically becomes available again when matching clipboard transfer data is present.
+- Updated README and manuals for clipboard-selector availability.
+
+## 0.7.6
+
+- Fixed Mission Planner clipboard delta-v selection so **Ejection** reads only the `Ejection Δv:` value and **Insertion** reads only the `Insertion Δv:` value from the matching clipboard transfer block.
+- Clipboard delta-v selection changes now force the newly selected field to be reapplied immediately to Needed Δv.
+- Updated README and manuals for the corrected clipboard field mapping.
+
+## 0.7.5
+
+- Restored the bottom Mission Planner append control to a full **Add New Maneuver** text button instead of the plus icon.
+- Fixed the **Clipboard Δv** selector so changing between **Ejection**, **Insertion**, and **Total** immediately reloads the corresponding value from the matching clipboard transfer block into Needed Δv.
+- Updated README and manuals for the restored append button and clipboard-selector refresh behavior.
+
+## 0.7.4
+
+- Launch and Sub-Orbital Launch now use the inferred home-body/most-recent-Landing body only as the initial body selection; the body remains an editable dropdown so the user can choose a different launch body.
+- Mission Planner row insertion controls now use `+▲` for Add Above and `-▼` for Add Below.
+- Transfer To Another Planet now shows a **Clipboard Δv** dropdown with **Ejection**, **Insertion**, and **Total** choices.
+- Clipboard transfer parsing now reads `Ejection Δv`, `Insertion Δv`, or `Total Δv` from the matching transfer-planner block according to the selected Clipboard Δv choice. The clipboard route must still match the derived source and selected destination.
+- Updated README and manuals for the revised launch-body selection, row controls, and clipboard delta-v selector.
+
+## 0.7.3
+
+- Mission Planner Launch and Sub-Orbital Launch body selection is now derived from mission history instead of using an editable body selector.
+- A launch uses KSP's home body when there is no earlier Landing maneuver; after a Landing, it uses the body from the most recent earlier Landing. Derived launch bodies refresh after insert, edit, delete, and reorder operations.
+- Replaced Mission Planner row action text buttons with the requested GUIContent icons: ▲ Move up, ▼ Move down, bold + Add child, and ✖ Delete. The bottom Add New Maneuver control also uses the + icon.
+- Removed the **Reload Delta-v Table** button from Mission Planner. The table continues to load automatically when Mission Planner initializes.
+- Updated README and manuals for the launch-body inference and revised Mission Planner controls.
+
+## 0.7.2
+
+- Mission Planner now checks the system clipboard while entering or editing **Transfer To Another Planet** maneuvers.
+- Transfer-planner text containing a `Total Δv:` line automatically fills the maneuver's needed delta-v field.
+- Clipboard transfer routes such as `Kerbin (@100km) -> Moho (@100km)` are matched against the maneuver's derived source body and selected destination before the value is applied, preventing an unrelated clipboard transfer from overwriting the entry.
+- Clipboard `Total Δv` takes precedence over the CSV transfer suggestion; if no matching clipboard transfer is found, the existing Stock.csv behavior remains unchanged.
+- Updated README and manuals for clipboard-assisted transfer delta-v entry.
+
+## 0.7.1
+
+- Added double-click editing for Mission Planner rows; double-click the row data to reopen the maneuver entry window with the existing values, then save the edited entry.
+- Transfer To Another Planet no longer has an independent source-body selector. Its source body is derived from the immediately preceding maneuver (or the preceding transfer's destination).
+- Transfer source bodies are refreshed after insert, edit, delete, and reorder operations so displayed routes stay consistent with mission order.
+- A transfer cannot be saved without a preceding maneuver that provides a body.
+- Updated README and manuals for Mission Planner editing and transfer-source behavior.
+
+## 0.7.0
+
+- Added a fourth editor mode, **Mission Planner**, for building an ordered list of mission maneuvers.
+- Mission rows show maneuver, body/route, required delta-v, ASL/VAC basis, **Add Above**, **Add Below**, **Up**, **Down**, and **Delete** controls.
+- Added a maneuver-entry window using the supplied drop-down ComboBox behavior and the requested maneuver enumeration.
+- Body selectors are shown for launch/orbit/landing and orbital-change maneuvers; transfers select source and destination bodies; Return From A Moon selects a moon.
+- Added CSV delta-v table loading from `GameData/VesselPlanner/PluginData/DeltaVTables/Stock.csv` using the requested 13-column format.
+- Launch/Sub-Orbital Launch automatically use `dV_to_low_orbit`, planetary transfers use `total_capture_dV`, and Landing/Splashdown use `dV_low_orbit_to_surface` when a matching table row is available; the value remains manually editable.
+- Added a starter Stock delta-v table and a **Reload Delta-v Table** control for editing/testing custom values without restarting KSP.
+- Mission Planner uses the same main-window background and skin as the rest of VesselPlanner.
+- Updated README and manuals for the new Mission Planner.
 
 ## 0.6.43
 

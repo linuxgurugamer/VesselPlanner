@@ -1,0 +1,90 @@
+# VesselPlanner Real Solar System (RSS) delta-v starter table.
+# Values are normalized from the supplied RSS starter data for VesselPlanner's self-row/route-row lookup model.
+# Self rows provide launch/landing/ascent metadata. Route rows provide exact Origin,Destination transfer suggestions.
+# Non-body destinations such as Geostationary, L1, and L2 are intentionally omitted so they do not appear in body dropdowns.
+# Malformed capture-node origins were replaced by their actual parent bodies (Jupiter, Saturn, Uranus, Neptune).
+# Parent->moon capture_dV stores the supplied full reverse low-moon-orbit -> low-parent-orbit insertion value used by Return From A Moon.
+# Interplanetary total_capture_dV is normalized to the complete departure + capture + low-orbit-insertion total used by Mission Planner.
+# Optional/expanded Solar System bodies from the supplied table are retained; remove rows for bodies not present in a particular RSS install if desired.
+Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
+Sun,Sun,0,0,0,0,0,0,0,0,,false,0
+Mercury,Mercury,3060,0,0,0,0,3060,3060,0,Sun,false,10
+Venus,Venus,29705,0,0,0,0,270,29705,0,Sun,false,20
+Earth,Earth,9000,0,0,0,0,400,9000,0,Sun,false,30
+Moon,Moon,1720,0,0,0,0,1720,1720,0,Earth,true,31
+Mars,Mars,3600,0,0,0,0,3600,3600,0,Sun,false,40
+Phobos,Phobos,6,0,0,0,0,6,6,0,Mars,true,41
+Deimos,Deimos,4,0,0,0,0,4,4,0,Mars,true,42
+Vesta,Vesta,160,0,0,0,0,160,160,0,Sun,false,50
+Ceres,Ceres,270,0,0,0,0,270,270,0,Sun,false,60
+Jupiter,Jupiter,0,0,0,0,0,0,0,0,Sun,false,70
+Himalia,Himalia,40,0,0,0,0,40,40,0,Jupiter,true,71
+Callisto,Callisto,1750,0,0,0,0,1750,1750,0,Jupiter,true,72
+Ganymede,Ganymede,1950,0,0,0,0,1950,1950,0,Jupiter,true,73
+Europa,Europa,1440,0,0,0,0,1440,1440,0,Jupiter,true,74
+Io,Io,1780,0,0,0,0,1780,1780,0,Jupiter,true,75
+Amalthea,Amalthea,20,0,0,0,0,20,20,0,Jupiter,true,76
+Saturn,Saturn,0,0,0,0,0,0,0,0,Sun,false,80
+Iapetus,Iapetus,410,0,0,0,0,410,410,0,Saturn,true,81
+Titan,Titan,7600,0,0,0,0,7600,7600,0,Saturn,true,82
+Rhea,Rhea,450,0,0,0,0,450,450,0,Saturn,true,83
+Dione,Dione,360,0,0,0,0,360,360,0,Saturn,true,84
+Tethys,Tethys,270,0,0,0,0,270,270,0,Saturn,true,85
+Enceladus,Enceladus,160,0,0,0,0,160,160,0,Saturn,true,86
+Mimas,Mimas,100,0,0,0,0,100,100,0,Saturn,true,87
+Uranus,Uranus,0,0,0,0,0,0,0,0,Sun,false,90
+Oberon,Oberon,530,0,0,0,0,530,530,0,Uranus,true,91
+Titania,Titania,560,0,0,0,0,560,560,0,Uranus,true,92
+Umbriel,Umbriel,370,0,0,0,0,370,370,0,Uranus,true,93
+Ariel,Ariel,390,0,0,0,0,390,390,0,Uranus,true,94
+Miranda,Miranda,130,0,0,0,0,130,130,0,Uranus,true,95
+Neptune,Neptune,0,0,0,0,0,0,0,0,Sun,false,100
+Nereid,Nereid,90,0,0,0,0,90,90,0,Neptune,true,101
+Triton,Triton,1050,0,0,0,0,1050,1050,0,Neptune,true,102
+Proteus,Proteus,110,0,0,0,0,110,110,0,Neptune,true,103
+Pluto,Pluto,890,0,0,0,0,890,890,0,Sun,false,110
+Charon,Charon,420,0,0,0,0,420,420,0,Pluto,true,111
+Haumea,Haumea,100,0,0,0,0,100,100,0,Sun,false,120
+Makemake,Makemake,360,0,0,0,0,360,360,0,Sun,false,130
+Eris,Eris,940,0,0,0,0,940,940,0,Sun,false,140
+Sedna,Sedna,290,0,0,0,0,290,290,0,Sun,false,150
+Earth,Sun,0,21290,178000,0,199290,0,0,0,Sun,false,0
+Earth,Mercury,0,5550,6310,1220,13080,0,0,0,Sun,false,10
+Earth,Venus,0,3490,360,2940,6790,0,0,0,Sun,false,20
+Earth,Mars,0,4270,340,1100,5710,0,0,0,Sun,false,40
+Earth,Vesta,0,4520,4110,100,8730,0,0,0,Sun,false,50
+Earth,Ceres,0,4900,4390,150,9440,0,0,0,Sun,false,60
+Earth,Jupiter,0,6300,270,17210,23780,0,0,0,Sun,false,70
+Earth,Saturn,0,7290,420,10220,17930,0,0,0,Sun,false,80
+Earth,Uranus,0,7980,510,6130,14620,0,0,0,Sun,false,90
+Earth,Neptune,0,8220,350,6750,15320,0,0,0,Sun,false,100
+Earth,Pluto,0,8330,2700,350,11380,0,0,0,Sun,false,110
+Earth,Haumea,0,8250,2920,210,11380,0,0,0,Sun,false,120
+Earth,Makemake,0,8350,2860,210,11420,0,0,0,Sun,false,130
+Earth,Eris,0,8460,1960,390,10810,0,0,0,Sun,false,140
+Earth,Sedna,0,8480,820,150,9450,0,0,0,Sun,false,150
+Earth,Moon,0,3120,680,0,3800,0,0,0,Earth,true,31
+Mars,Phobos,0,610,543,3,1153,0,0,0,Mars,true,41
+Mars,Deimos,0,1100,652,2,1752,0,0,0,Mars,true,42
+Jupiter,Himalia,0,0,3080,20,3080,0,0,0,Jupiter,true,71
+Jupiter,Callisto,0,0,5850,700,5850,0,0,0,Jupiter,true,72
+Jupiter,Ganymede,0,0,7500,790,7500,0,0,0,Jupiter,true,73
+Jupiter,Europa,0,0,9480,580,9480,0,0,0,Jupiter,true,74
+Jupiter,Io,0,0,11060,730,11060,0,0,0,Jupiter,true,75
+Jupiter,Amalthea,0,0,15510,10,15510,0,0,0,Jupiter,true,76
+Saturn,Iapetus,0,0,2350,160,2350,0,0,0,Saturn,true,81
+Saturn,Titan,0,0,3160,660,3160,0,0,0,Saturn,true,82
+Saturn,Rhea,0,0,6090,180,6090,0,0,0,Saturn,true,83
+Saturn,Dione,0,0,6940,140,6940,0,0,0,Saturn,true,84
+Saturn,Tethys,0,0,7590,110,7590,0,0,0,Saturn,true,85
+Saturn,Enceladus,0,0,8170,70,8170,0,0,0,Saturn,true,86
+Saturn,Mimas,0,0,8760,40,8760,0,0,0,Saturn,true,87
+Uranus,Oberon,0,0,2300,210,2300,0,0,0,Uranus,true,91
+Uranus,Titania,0,0,2610,220,2610,0,0,0,Uranus,true,92
+Uranus,Umbriel,0,0,3360,150,3360,0,0,0,Uranus,true,93
+Uranus,Ariel,0,0,3790,160,3790,0,0,0,Uranus,true,94
+Uranus,Miranda,0,0,4530,50,4530,0,0,0,Uranus,true,95
+Neptune,Nereid,0,50,910,40,960,0,0,0,Neptune,true,101
+Neptune,Triton,0,0,2910,410,2910,0,0,0,Neptune,true,102
+Neptune,Proteus,0,4580,5120,50,9700,0,0,0,Neptune,true,103
+Pluto,Charon,0,310,180,160,490,0,0,0,Pluto,true,111

@@ -1,0 +1,66 @@
+# VesselPlanner Galileo's Planet Pack (GPP) delta-v starter table.
+# Values are based on the GPP Release 1.6.0 delta-v map bundled with the current GPP repository.
+# Self rows provide body launch/landing metadata. Route rows provide exact Origin,Destination transfer suggestions.
+# Interplanetary total_capture_dV is the low-Gael-orbit -> low-destination-orbit total, excluding Gael launch and the optional 345 m/s equator/plane-change allowance.
+# For parent->moon rows, capture_dV stores the full reverse low-moon-orbit -> low-parent-orbit value used by VesselPlanner's Return From A Moon calculation.
+# Lili and Grannus have no usable transfer values on the bundled GPP delta-v map, so their unavailable values remain zero.
+Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
+Ciro,Ciro,0,0,0,0,0,0,0,0,,false,0
+Icarus,Icarus,590,0,0,0,0,590,590,0,Ciro,false,10
+Thalia,Thalia,1010,0,0,0,0,1010,1010,0,Ciro,false,20
+Eta,Eta,225,0,0,0,0,225,225,0,Thalia,true,21
+Niven,Niven,2015,0,0,0,0,2015,2015,0,Ciro,false,30
+Gael,Gael,3200,0,0,0,0,0,3200,0,Ciro,false,40
+Iota,Iota,355,0,0,0,0,355,355,0,Gael,true,41
+Ceti,Ceti,530,0,0,0,0,530,530,0,Gael,true,42
+Tellumo,Tellumo,7050,0,0,0,0,7050,7050,0,Ciro,false,50
+Lili,Lili,0,0,0,0,0,0,0,0,Tellumo,true,51
+Gratian,Gratian,2570,0,0,0,0,2570,2570,0,Ciro,false,60
+Geminus,Geminus,800,0,0,0,0,800,800,0,Gratian,true,61
+Otho,Otho,0,0,0,0,0,0,0,0,Ciro,false,70
+Augustus,Augustus,1575,0,0,0,0,1575,1575,0,Otho,true,71
+Hephaestus,Hephaestus,375,0,0,0,0,375,375,0,Otho,true,72
+Jannah,Jannah,315,0,0,0,0,315,315,0,Otho,true,73
+Gauss,Gauss,0,0,0,0,0,0,0,0,Ciro,false,80
+Loki,Loki,475,0,0,0,0,475,475,0,Gauss,true,81
+Catullus,Catullus,6750,0,0,0,0,6750,6750,0,Gauss,true,82
+Tarsiss,Tarsiss,2045,0,0,0,0,2045,2045,0,Catullus,true,83
+Nero,Nero,0,0,0,0,0,0,0,0,Ciro,false,90
+Hadrian,Hadrian,1245,0,0,0,0,1245,1245,0,Nero,true,91
+Narisse,Narisse,235,0,0,0,0,235,235,0,Nero,true,92
+Muse,Muse,385,0,0,0,0,385,385,0,Nero,true,93
+Minona,Minona,330,0,0,0,0,330,330,0,Nero,true,94
+Agrippina,Agrippina,575,0,0,0,0,575,575,0,Nero,true,95
+Julia,Julia,85,0,0,0,0,85,85,0,Nero,true,96
+Hox,Hox,710,0,0,0,0,710,710,0,Ciro,false,100
+Argo,Argo,205,0,0,0,0,205,205,0,Hox,true,101
+Leto,Leto,560,0,0,0,0,560,560,0,Ciro,false,110
+Grannus,Grannus,0,0,0,0,0,0,0,0,Ciro,false,120
+Gael,Ciro,0,6895,0,54500,61395,0,0,0,,false,0
+Gael,Icarus,0,2495,4800,185,7480,0,0,1850,Ciro,false,10
+Gael,Thalia,0,1395,1220,350,2965,0,0,645,Ciro,false,20
+Thalia,Eta,0,5,95,90,95,0,0,30,Thalia,true,21
+Gael,Niven,0,1025,195,520,1740,0,0,185,Ciro,false,30
+Gael,Iota,0,905,1100,195,1100,0,0,345,Gael,true,41
+Gael,Ceti,0,925,1150,225,1150,0,0,700,Gael,true,42
+Gael,Tellumo,0,1115,90,1730,2935,0,0,235,Ciro,false,50
+Gratian,Geminus,0,75,410,335,410,0,0,100,Gratian,true,61
+Gael,Gratian,0,1545,440,790,2775,0,0,305,Ciro,false,60
+Gael,Otho,0,2015,230,2140,4385,0,0,235,Ciro,false,70
+Otho,Augustus,0,650,1370,720,1370,0,0,85,Otho,true,71
+Otho,Hephaestus,0,655,1420,765,1420,0,0,45,Otho,true,72
+Otho,Jannah,0,215,895,680,895,0,0,530,Otho,true,73
+Gael,Gauss,0,2365,230,1930,4525,0,0,320,Ciro,false,80
+Gauss,Loki,0,460,1110,650,1110,0,0,310,Gauss,true,81
+Gauss,Catullus,0,230,555,325,555,0,0,80,Gauss,true,82
+Catullus,Tarsiss,0,335,745,410,745,0,0,0,Catullus,true,83
+Gael,Nero,0,2575,125,2710,5410,0,0,165,Ciro,false,90
+Nero,Agrippina,0,30,430,400,430,0,0,2040,Nero,true,95
+Nero,Julia,0,0,0,0,0,0,0,1140,Nero,true,96
+Nero,Minona,0,185,955,770,955,0,0,1230,Nero,true,94
+Nero,Muse,0,305,1185,880,1185,0,0,1130,Nero,true,93
+Nero,Hadrian,0,755,1655,900,1655,0,0,1070,Nero,true,91
+Nero,Narisse,0,495,1565,1070,1565,0,0,1180,Nero,true,92
+Gael,Hox,0,2665,755,225,3645,0,0,820,Ciro,false,100
+Hox,Argo,0,10,85,75,85,0,0,365,Hox,true,101
+Gael,Leto,0,2705,715,190,3610,0,0,1650,Ciro,false,110

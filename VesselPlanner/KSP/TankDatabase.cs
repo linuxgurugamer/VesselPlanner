@@ -17,8 +17,15 @@ namespace VesselPlanner.KSP
                 try
                 {
                     if (available == null || available.partPrefab == null) continue;
-                    if (!IsAvailableToPlayer(available)) continue;
+                    if (!CommonRoutines.IsAvailableToPlayer(available)) continue;
                     if (available.partPrefab.FindModuleImplementing<ModuleEngines>() != null) continue;
+
+                    // Only offer stackable tanks that can connect on both ends. Radial tanks
+                    // and other storage parts missing either node are not suitable for the
+                    // Stage-by-Stage tank-selection workflow.
+                    if (available.partPrefab.FindAttachNode("top") == null ||
+                        available.partPrefab.FindAttachNode("bottom") == null)
+                        continue;
 
                     var resources = available.partPrefab.Resources
                         .Cast<PartResource>()
@@ -29,11 +36,12 @@ namespace VesselPlanner.KSP
                     var tank = new TankCandidate
                     {
                         PartName = available.name,
+                        PartUrl = available.partUrl,
                         DisplayName = available.title,
-                        DryMassTons = GetDryPrefabMass(available.partPrefab),
+                        DryMassTons = CommonRoutines.GetDryPartMass(available.partPrefab),
                         Cost = available.cost
                     };
-                    AddBulkheadProfiles(tank.BulkheadProfiles, available.bulkheadProfiles);
+                    CommonRoutines.AddBulkheadProfiles(tank.BulkheadProfiles, available.bulkheadProfiles);
 
                     foreach (PartResource r in resources)
                     {
@@ -54,34 +62,6 @@ namespace VesselPlanner.KSP
             }
 
             return results.OrderBy(t => t.DisplayName).ToList();
-        }
-
-        private static double GetDryPrefabMass(Part p)
-        {
-            double mass = p.mass;
-            try { mass += p.GetModuleMass(p.mass, ModifierStagingSituation.CURRENT); }
-            catch { }
-            return Math.Max(0.0, mass);
-        }
-
-        private static void AddBulkheadProfiles(List<string> output, string profiles)
-        {
-            if (output == null || string.IsNullOrEmpty(profiles)) return;
-            foreach (string raw in profiles.Split(','))
-            {
-                string profile = raw.Trim();
-                if (profile.Length == 0) continue;
-                if (!output.Any(x => string.Equals(x, profile, StringComparison.OrdinalIgnoreCase)))
-                    output.Add(profile);
-            }
-        }
-
-        private static bool IsAvailableToPlayer(AvailablePart part)
-        {
-            if (part.category == PartCategories.none) return false;
-            if (HighLogic.CurrentGame == null || HighLogic.CurrentGame.Mode == Game.Modes.SANDBOX) return true;
-            if (ResearchAndDevelopment.Instance == null) return true;
-            return ResearchAndDevelopment.PartModelPurchased(part);
         }
     }
 }

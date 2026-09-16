@@ -21,7 +21,7 @@ namespace VesselPlanner.Core
             };
 
             if (engineCount <= 0 || req.TargetDeltaV <= 0.0 || req.Gravity <= 0.0)
-                return Fail(result, "Invalid planning inputs.");
+                return CommonRoutines.FailStageSolution(result, "Invalid planning inputs.");
 
             // Planning geometry (fuel load, tank mass, wet/dry mass and burn time) is based
             // on the engine's vacuum performance by default. Moving the altitude slider then
@@ -36,12 +36,12 @@ namespace VesselPlanner.Core
             double thrust = engine.ThrustAtEnvironment(
                 req.Atmospheres, req.AtmosphereTemperatureK, req.AtmosphereDensityKgPerM3) * engineCount;
             if (vacuumIsp <= 0.0 || atmosphericIsp <= 0.0 || thrust <= 0.0)
-                return Fail(result, "Engine has no usable thrust/ISP in this environment.");
+                return CommonRoutines.FailStageSolution(result, "Engine has no usable thrust/ISP in this environment.");
 
             var allProps = engine.Propellants.Where(p => p.Ratio > 0.0).ToList();
             var ispProps = allProps.Where(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0).ToList();
             if (ispProps.Count == 0)
-                return Fail(result, "No mass-bearing propellants could be resolved for delta-v calculation.");
+                return CommonRoutines.FailStageSolution(result, "No mass-bearing propellants could be resolved for delta-v calculation.");
 
             double sizingIsp = req.TargetDeltaVBasis == DeltaVBasis.Atmospheric ? atmosphericIsp : vacuumIsp;
 
@@ -59,7 +59,7 @@ namespace VesselPlanner.Core
                 double nextPropMass = dryMass * (massRatio - 1.0);
 
                 if (double.IsNaN(nextPropMass) || double.IsInfinity(nextPropMass) || nextPropMass > 1e9)
-                    return Fail(result, "No finite solution for the selected engine and target delta-v.");
+                    return CommonRoutines.FailStageSolution(result, "No finite solution for the selected engine and target delta-v.");
 
                 if (Math.Abs(nextPropMass - propMass) < 1e-8)
                 {
@@ -104,7 +104,7 @@ namespace VesselPlanner.Core
             result.TankVolumeLiters = result.Propellants.Sum(p => p.VolumeLiters);
 
             if (result.InitialTwr + 1e-9 < req.MinimumTwr)
-                return Fail(result, "Below minimum TWR.");
+                return CommonRoutines.FailStageSolution(result, "Below minimum TWR.");
 
             result.IsValid = true;
             return result;
@@ -150,13 +150,6 @@ namespace VesselPlanner.Core
                     VolumeLiters = p.LitersPerUnit > 0.0 ? units * p.LitersPerUnit : 0.0
                 });
             }
-        }
-
-        private static StageSolution Fail(StageSolution result, string reason)
-        {
-            result.IsValid = false;
-            result.FailureReason = reason;
-            return result;
         }
     }
 }

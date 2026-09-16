@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using VesselPlanner.Core;
+using KSP.Localization;
 
 namespace VesselPlanner.KSP
 {
@@ -30,10 +31,23 @@ namespace VesselPlanner.KSP
             {
                 if (part == null) continue;
                 hasPart = true;
-                wetMassTons += GetDryPartMass(part) + GetResourceMass(part);
+                wetMassTons += CommonRoutines.GetDryPartMass(part) + GetResourceMass(part);
             }
 
             return hasPart;
+        }
+
+        private static string LocalizedTitle(Part part)
+        {
+            if (part == null) return string.Empty;
+            string title = part.partInfo != null ? part.partInfo.title : part.name;
+            try
+            {
+                string localized = Localizer.Format(title ?? string.Empty);
+                if (!string.IsNullOrEmpty(localized)) return localized;
+            }
+            catch { }
+            return title ?? string.Empty;
         }
 
         public static int ResolveStageForPart(Part clickedPart)
@@ -148,7 +162,7 @@ namespace VesselPlanner.KSP
             foreach (Part p in parts)
             {
                 if (p == null) continue;
-                double dry = GetDryPartMass(p);
+                double dry = CommonRoutines.GetDryPartMass(p);
                 double res = GetResourceMass(p);
                 snap.VesselDryMassTons += dry;
                 snap.VesselWetMassTons += dry + res;
@@ -161,7 +175,7 @@ namespace VesselPlanner.KSP
             var stageParts = new HashSet<Part>();
             foreach (Part enginePart in stageEngines)
             {
-                string engineTitle = enginePart.partInfo != null ? enginePart.partInfo.title : enginePart.name;
+                string engineTitle = LocalizedTitle(enginePart);
                 string enginePartName = enginePart.partInfo != null ? enginePart.partInfo.name : enginePart.name;
                 snap.CurrentEngines.Add(engineTitle);
                 if (!string.IsNullOrEmpty(enginePartName))
@@ -179,7 +193,7 @@ namespace VesselPlanner.KSP
             foreach (Part p in stageParts)
             {
                 if (p.partInfo != null)
-                    AddBulkheadProfiles(snap.BulkheadProfiles, p.partInfo.bulkheadProfiles);
+                    CommonRoutines.AddBulkheadProfiles(snap.BulkheadProfiles, p.partInfo.bulkheadProfiles, true);
 
                 bool hasMassResource = false;
                 foreach (PartResource r in p.Resources)
@@ -201,7 +215,7 @@ namespace VesselPlanner.KSP
                     snap.StagePropellantMassTons += r.amount * r.info.density;
                     snap.StagePropellantCapacityMassTons += r.maxAmount * r.info.density;
                 }
-                double partDry = GetDryPartMass(p);
+                double partDry = CommonRoutines.GetDryPartMass(p);
                 if (p.FindModuleImplementing<ModuleEngines>() != null)
                     snap.CurrentEngineMassTons += partDry;
                 else
@@ -222,7 +236,7 @@ namespace VesselPlanner.KSP
             // double-counted those parts (and their fuel), which inflated m0/m1 and produced
             // delta-v values that could differ dramatically from KSP/MechJeb.
             snap.PayloadAboveStageMassTons = parts.Where(p => p != null && !stageParts.Contains(p) && p.inverseStage < stage)
-                .Sum(p => GetDryPartMass(p) + GetResourceMass(p));
+                .Sum(p => CommonRoutines.GetDryPartMass(p) + GetResourceMass(p));
 
             // Prefer KSP's own stage mass boundaries when the stock delta-v simulator can
             // provide them.  Its part/fuel-flow staging model correctly accounts for retained
@@ -290,7 +304,7 @@ namespace VesselPlanner.KSP
 
                 // Last-resort fallback if the stock DeltaV part data is not ready yet.
                 if (stockCurrentEngineMass <= 0.0 && selectedEngineSet.Count > 0)
-                    stockCurrentEngineMass = selectedEngineSet.Sum(GetDryPartMass);
+                    stockCurrentEngineMass = selectedEngineSet.Sum(CommonRoutines.GetDryPartMass);
 
                 snap.StockCurrentEngineMassTons = Math.Max(0.0, stockCurrentEngineMass);
                 if (snap.StockCurrentEngineMassTons > 0.0)
@@ -351,6 +365,8 @@ namespace VesselPlanner.KSP
 
                     snap.CurrentEngineDetails.Add(new ExistingEngineInfo
                     {
+                        PartName = enginePart.partInfo == null ? string.Empty : enginePart.partInfo.name,
+                        PartUrl = enginePart.partInfo == null ? string.Empty : enginePart.partInfo.partUrl,
                         DisplayName = engineTitle + (modules.Count > 1 ? " [mode " + (moduleIndex + 1) + "]" : string.Empty),
                         SeaLevelThrustKn = seaLevelThrust,
                         VacuumThrustKn = vacuumThrust,
@@ -375,18 +391,6 @@ namespace VesselPlanner.KSP
             catch { }
         }
 
-        private static void AddBulkheadProfiles(List<string> output, string profiles)
-        {
-            if (output == null || string.IsNullOrEmpty(profiles)) return;
-            foreach (string raw in profiles.Split(','))
-            {
-                string profile = raw.Trim();
-                if (profile.Length == 0 || string.Equals(profile, "srf", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!output.Any(x => string.Equals(x, profile, StringComparison.OrdinalIgnoreCase)))
-                    output.Add(profile);
-            }
-        }
-
         private static void AddBranchUntilDecoupler(Part start, HashSet<Part> output)
         {
             Part p = start;
@@ -408,15 +412,6 @@ namespace VesselPlanner.KSP
             foreach (PartResource r in p.Resources)
                 if (r != null && r.info != null) mass += r.amount * r.info.density;
             return mass;
-        }
-
-        private static double GetDryPartMass(Part p)
-        {
-            // GetModuleMass is used by KSP for modules that alter part mass (e.g. variants).
-            double mass = p.mass;
-            try { mass += p.GetModuleMass(p.mass, ModifierStagingSituation.CURRENT); }
-            catch { }
-            return Math.Max(0.0, mass);
         }
     }
 }

@@ -1,0 +1,50 @@
+# VesselPlanner JNSQ delta-v starter table.
+# Values are based on the JNSQ delta-v map and are editable for a preferred mission profile.
+# Self rows provide body launch/landing metadata. Route rows provide exact Origin,Destination transfer suggestions.
+# For interplanetary routes, total_capture_dV uses the lower/ideal Total value from the JNSQ map.
+# Return From A Moon uses the moon self-row ascent value plus the matching parent->moon capture_dV when such a route row is present.
+Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
+Sun,Sun,0,0,0,0,0,0,0,0,,false,0
+Moho,Moho,1660,0,0,0,0,1660,1660,0,Sun,false,10
+Eve,Eve,6700,0,0,0,0,0,6700,0,Sun,false,20
+Gilly,Gilly,70,0,0,0,0,70,70,0,Eve,true,21
+Kerbin,Kerbin,4900,0,0,0,0,200,4900,0,Sun,false,30
+Mun,Mun,880,0,0,0,0,880,880,0,Kerbin,true,31
+Minmus,Minmus,305,0,0,0,0,305,305,0,Kerbin,true,32
+Duna,Duna,1975,0,0,0,0,200,1975,0,Sun,false,40
+Ike,Ike,400,0,0,0,0,400,400,0,Duna,true,41
+Edna,Edna,370,0,0,0,0,370,370,0,Sun,false,50
+Dak,Dak,55,0,0,0,0,55,55,0,Edna,true,51
+Dres,Dres,610,0,0,0,0,610,610,0,Sun,false,60
+Jool,Jool,0,0,0,0,0,0,0,0,Sun,false,70
+Laythe,Laythe,3325,0,0,0,0,0,3325,0,Jool,true,71
+Vall,Vall,1150,0,0,0,0,1150,1150,0,Jool,true,72
+Tylo,Tylo,2175,0,0,0,0,0,2175,0,Jool,true,73
+Bop,Bop,355,0,0,0,0,355,355,0,Jool,true,74
+Pol,Pol,200,0,0,0,0,200,200,0,Jool,true,75
+Lindor,Lindor,0,0,0,0,0,0,0,0,Sun,false,80
+Krel,Krel,245,0,0,0,0,245,245,0,Lindor,true,81
+Aden,Aden,500,0,0,0,0,500,500,0,Lindor,true,82
+Huygen,Huygen,1875,0,0,0,0,0,1875,0,Lindor,true,83
+Riga,Riga,1500,0,0,0,0,0,1500,0,Lindor,true,84
+Talos,Talos,840,0,0,0,0,840,840,0,Lindor,true,85
+Eeloo,Eeloo,900,0,0,0,0,350,900,0,Sun,false,90
+Celes,Celes,325,0,0,0,0,325,325,0,Eeloo,true,91
+Tam,Tam,30,0,0,0,0,30,30,0,Eeloo,true,92
+Hamek,Hamek,550,0,0,0,0,550,550,0,Sun,false,100
+Nara,Nara,0,0,0,0,0,0,0,0,Sun,false,110
+Amos,Amos,475,0,0,0,0,475,475,0,Nara,true,111
+Enon,Enon,1170,0,0,0,0,1170,1170,0,Nara,true,112
+Prax,Prax,160,0,0,0,0,160,160,0,Nara,true,113
+Kerbin,Mun,0,1545,375,0,1920,0,0,0,Kerbin,true,31
+Kerbin,Minmus,0,1570,230,0,1800,0,0,0,Kerbin,true,32
+Kerbin,Moho,0,2395,3710,530,7960,0,0,2810,Sun,false,10
+Kerbin,Eve,0,1720,150,2130,4050,0,0,610,Sun,false,20
+Kerbin,Duna,0,1740,275,635,2765,0,0,15,Sun,false,40
+Kerbin,Edna,0,2275,1610,180,4290,0,0,715,Sun,false,50
+Kerbin,Dres,0,2395,1375,260,4915,0,0,1210,Sun,false,60
+Kerbin,Jool,0,3070,235,4810,8200,0,0,320,Sun,false,70
+Kerbin,Lindor,0,3585,295,3430,7410,0,0,430,Sun,false,80
+Kerbin,Eeloo,0,3670,1075,360,5980,0,0,1570,Sun,false,90
+Kerbin,Hamek,0,3855,1555,270,5690,0,0,1015,Sun,false,100
+Kerbin,Nara,0,4095,90,2390,6770,0,0,5175,Sun,false,110

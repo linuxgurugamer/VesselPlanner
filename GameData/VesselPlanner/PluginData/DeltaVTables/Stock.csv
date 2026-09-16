@@ -1,0 +1,28 @@
+# VesselPlanner Stock delta-v starter table. Values are editable; replace/extend rows for your preferred delta-v map.
+# Mission Planner uses exact Origin,Destination rows for transfer suggestions and self rows for body launch/landing values.
+Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
+Sun,Sun,0,0,0,0,0,0,0,0,,false,0
+Moho,Moho,870,0,0,0,0,870,870,0,Sun,false,10
+Eve,Eve,8000,0,0,0,0,1500,8000,0,Sun,false,20
+Gilly,Gilly,30,0,0,0,0,30,30,0,Eve,true,21
+Kerbin,Kerbin,3400,0,0,0,0,3400,3400,0,Sun,false,30
+Mun,Mun,580,0,0,0,0,580,580,0,Kerbin,true,31
+Minmus,Minmus,180,0,0,0,0,180,180,0,Kerbin,true,32
+Duna,Duna,1450,0,0,0,0,1450,1450,0,Sun,false,40
+Ike,Ike,390,0,0,0,0,390,390,0,Duna,true,41
+Dres,Dres,430,0,0,0,0,430,430,0,Sun,false,50
+Jool,Jool,0,0,0,0,0,0,0,0,Sun,false,60
+Laythe,Laythe,2900,0,0,0,0,2900,2900,0,Jool,true,61
+Vall,Vall,860,0,0,0,0,860,860,0,Jool,true,62
+Tylo,Tylo,2270,0,0,0,0,2270,2270,0,Jool,true,63
+Bop,Bop,230,0,0,0,0,230,230,0,Jool,true,64
+Pol,Pol,130,0,0,0,0,130,130,0,Jool,true,65
+Eeloo,Eeloo,620,0,0,0,0,620,620,0,Sun,false,70
+Kerbin,Mun,0,860,310,0,1170,580,580,0,Kerbin,true,31
+Kerbin,Minmus,0,930,160,0,1090,180,180,0,Kerbin,true,32
+Kerbin,Moho,0,1680,2410,0,4090,870,870,0,Sun,false,10
+Kerbin,Eve,0,1030,1310,0,2340,1500,8000,0,Sun,false,20
+Kerbin,Duna,0,1060,1450,0,2510,1450,1450,0,Sun,false,40
+Kerbin,Dres,0,1290,1290,0,2580,430,430,0,Sun,false,50
+Kerbin,Jool,0,1915,160,0,2075,0,0,0,Sun,false,60
+Kerbin,Eeloo,0,1780,1370,0,3150,620,620,0,Sun,false,70

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using VesselPlanner.Flight;
+using VesselPlanner.Core;
 
 namespace VesselPlanner.UI
 {
@@ -151,7 +152,7 @@ namespace VesselPlanner.UI
                 _window.height = requestedHeight;
                 ApplyHorizontalResize(ref _window, ref _pendingFlightWidthResizeDelta, MINIMUM_WINDOW_WIDTH);
                 KeepSizeOnScreen(ref _window, MINIMUM_WINDOW_WIDTH, MinWindowHeight);
-                ClampWindow(ref _window);
+                CommonRoutines.ClampWindow(ref _window);
             }
 
             if (SettingsVisible)
@@ -169,7 +170,7 @@ namespace VesselPlanner.UI
                 _settingsWindow.height = requestedHeight;
                 ApplyResize(ref _settingsWindow, ref _pendingSettingsResizeDelta, MinSettingsWidth, MinSettingsHeight);
                 KeepSizeOnScreen(ref _settingsWindow, MinSettingsWidth, MinSettingsHeight);
-                ClampWindow(ref _settingsWindow);
+                CommonRoutines.ClampWindow(ref _settingsWindow);
             }
         }
 
@@ -1286,7 +1287,7 @@ namespace VesselPlanner.UI
             string save = HighLogic.CurrentGame != null ? HighLogic.CurrentGame.Title : "KSP";
             Vessel vessel = FlightGlobals.ActiveVessel;
             string vesselName = vessel != null ? vessel.vesselName : "Vessel";
-            string filename = SanitizeFilename(save) + "_" + SanitizeFilename(vesselName) + "_" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "." + extension;
+            string filename = CommonRoutines.SanitiseFileName(save, "KSP") + "_" + CommonRoutines.SanitiseFileName(vesselName, "KSP") + "_" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "." + extension;
             return Path.Combine(folder, filename);
         }
 
@@ -1412,13 +1413,6 @@ namespace VesselPlanner.UI
                 _status = "Unable to save flight settings: " + ex.Message;
                 Debug.LogWarning("[VesselPlanner] Unable to save flight settings: " + ex.Message);
             }
-        }
-
-        private static string SanitizeFilename(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return "KSP";
-            foreach (char c in Path.GetInvalidFileNameChars()) value = value.Replace(c, '_');
-            return value;
         }
 
         private static void DrawColorSwatch(Color32 color)
@@ -1580,12 +1574,6 @@ namespace VesselPlanner.UI
             float maxHeight = Mathf.Max(minHeight, Screen.height - ScreenMargin);
             window.width = Mathf.Clamp(window.width, minWidth, maxWidth);
             window.height = Mathf.Clamp(window.height, minHeight, maxHeight);
-        }
-
-        private static void ClampWindow(ref Rect window)
-        {
-            window.x = Mathf.Clamp(window.x, -window.width + 40f, Screen.width - 40f);
-            window.y = Mathf.Clamp(window.y, 0f, Screen.height - 30f);
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using VesselPlanner.Core;
 using KSP.UI.Screens;
+using KSP.Localization;
 
 namespace VesselPlanner.KSP
 {
@@ -19,7 +20,7 @@ namespace VesselPlanner.KSP
                 try
                 {
                     if (available == null || available.partPrefab == null) continue;
-                    if (!IsAvailableToPlayer(available)) continue;
+                    if (!CommonRoutines.IsAvailableToPlayer(available)) continue;
 
                     Part prefab = available.partPrefab;
                     var modules = prefab.FindModulesImplementing<ModuleEngines>();
@@ -70,7 +71,8 @@ namespace VesselPlanner.KSP
                         var c = new EngineCandidate
                         {
                             PartName = available.name + (modules.Count > 1 ? ":" + moduleIndex : string.Empty),
-                            DisplayName = available.title + (modules.Count > 1 ? " [mode " + (moduleIndex + 1) + "]" : string.Empty),
+                            PartUrl = available.partUrl,
+                            DisplayName = LocalizedPartTitle(available) + (modules.Count > 1 ? " [mode " + (moduleIndex + 1) + "]" : string.Empty),
                             MassTons = prefab.mass,
                             Cost = available.cost,
                             MaxThrustVacuumKn = vacuumThrust,
@@ -89,7 +91,7 @@ namespace VesselPlanner.KSP
                         };
 
                         c.Propellants.AddRange(propellantSpecs);
-                        AddBulkheadProfiles(c.BulkheadProfiles, available.bulkheadProfiles);
+                        CommonRoutines.AddBulkheadProfiles(c.BulkheadProfiles, available.bulkheadProfiles);
 
                         if (c.Propellants.Any(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0))
                             results.Add(c);
@@ -102,6 +104,19 @@ namespace VesselPlanner.KSP
                 }
             }
             return results.OrderBy(e => e.DisplayName).ToList();
+        }
+
+        private static string LocalizedPartTitle(AvailablePart available)
+        {
+            if (available == null) return string.Empty;
+            string title = available.title ?? string.Empty;
+            try
+            {
+                string localized = Localizer.Format(title);
+                if (!string.IsNullOrEmpty(localized)) return localized;
+            }
+            catch { }
+            return string.IsNullOrEmpty(title) ? (available.name ?? string.Empty) : title;
         }
 
         public static double StaticThrustFromIsp(double vacuumThrustKn, double vacuumIsp, double environmentIsp)
@@ -210,26 +225,6 @@ namespace VesselPlanner.KSP
             {
                 return -1;
             }
-        }
-
-        private static void AddBulkheadProfiles(List<string> output, string profiles)
-        {
-            if (output == null || string.IsNullOrEmpty(profiles)) return;
-            foreach (string raw in profiles.Split(','))
-            {
-                string profile = raw.Trim();
-                if (profile.Length == 0) continue;
-                if (!output.Any(x => string.Equals(x, profile, StringComparison.OrdinalIgnoreCase)))
-                    output.Add(profile);
-            }
-        }
-
-        private static bool IsAvailableToPlayer(AvailablePart part)
-        {
-            if (part.category == PartCategories.none) return false;
-            if (HighLogic.CurrentGame == null || HighLogic.CurrentGame.Mode == Game.Modes.SANDBOX) return true;
-            if (ResearchAndDevelopment.Instance == null) return true;
-            return ResearchAndDevelopment.PartModelPurchased(part);
         }
     }
 }

@@ -38,11 +38,11 @@ namespace VesselPlanner.Core
         private static StageSolution SimulateOne(ExistingStageSnapshot snap, EngineCandidate engine, int count, double gravity, double atmospheres, double atmosphereTemperatureK, double atmosphereDensityKgPerM3)
         {
             var r = new StageSolution { Engine = engine, EngineCount = count, Isp = engine.IspAtPressure(atmospheres) };
-            if (r.Isp <= 0.0) return Fail(r, "No usable ISP.");
+            if (r.Isp <= 0.0) return CommonRoutines.FailStageSolution(r, "No usable ISP.");
 
             var allProps = engine.Propellants.Where(p => p.Ratio > 0.0).ToList();
             var props = allProps.Where(p => !p.IgnoreForIsp && p.DensityTonsPerUnit > 0.0).ToList();
-            if (props.Count == 0) return Fail(r, "No mass-bearing propellants for delta-v calculation.");
+            if (props.Count == 0) return CommonRoutines.FailStageSolution(r, "No mass-bearing propellants for delta-v calculation.");
 
             // Propellant ratios are resource-unit ratios. For existing-stage delta-v, use the
             // resource amount currently loaded in the editor, not maxAmount/capacity. This matches
@@ -51,10 +51,10 @@ namespace VesselPlanner.Core
             foreach (var p in props)
             {
                 var have = snap.Resources.FirstOrDefault(x => string.Equals(x.Name, p.ResourceName, StringComparison.OrdinalIgnoreCase));
-                if (have == null || have.Amount <= 0.0) return Fail(r, "Stage lacks usable " + p.ResourceName + ".");
+                if (have == null || have.Amount <= 0.0) return CommonRoutines.FailStageSolution(r, "Stage lacks usable " + p.ResourceName + ".");
                 mixtureScale = Math.Min(mixtureScale, have.Amount / p.Ratio);
             }
-            if (double.IsInfinity(mixtureScale) || mixtureScale <= 0.0) return Fail(r, "No usable propellant amount.");
+            if (double.IsInfinity(mixtureScale) || mixtureScale <= 0.0) return CommonRoutines.FailStageSolution(r, "No usable propellant amount.");
 
             foreach (var p in allProps)
             {
@@ -139,7 +139,7 @@ namespace VesselPlanner.Core
                 r.StartMassTons = r.DryMassTons + r.PropellantMassTons;
             }
 
-            if (r.DryMassTons <= 0.0 || r.StartMassTons <= r.DryMassTons) return Fail(r, "No meaningful stage mass.");
+            if (r.DryMassTons <= 0.0 || r.StartMassTons <= r.DryMassTons) return CommonRoutines.FailStageSolution(r, "No meaningful stage mass.");
 
             r.ThrustKn = engine.ThrustAtEnvironment(atmospheres, atmosphereTemperatureK, atmosphereDensityKgPerM3) * count;
             r.SeaLevelThrustKn = engine.SeaLevelThrustKn * count;
@@ -173,8 +173,6 @@ namespace VesselPlanner.Core
                 !string.IsNullOrEmpty(name) &&
                 string.Equals(name, candidatePartName, StringComparison.OrdinalIgnoreCase));
         }
-
-        private static StageSolution Fail(StageSolution r, string why) { r.IsValid = false; r.FailureReason = why; return r; }
 
         private static List<StageSolution> Sort(List<StageSolution> results, OptimizationMode mode)
         {

@@ -2,9 +2,90 @@
 
 VesselPlanner is a planning and telemetry mod for **Kerbal Space Program 1.12.x**. It helps you analyze an existing stage, design a future stage, build a vessel one stage at a time, and record flight telemetry.
 
-An illustrated Word version of this instruction manual, including UI screenshots, is included at `Manual/VesselPlanner-Manual.docx`.
+A Word version of this instruction manual is included at `Manual/VesselPlanner-Manual.docx`. Screenshot locations are marked with descriptive image-placeholder tags.
 
 A detailed Stage-By-Stage walkthrough is included at `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`.
+
+### 0.7.46 part-thumbnail hover preview
+
+Hovering over any engine or tank thumbnail in Planning, Analyze Existing, or the Stage-By-Stage build list now shows a larger 160 px preview. The hover image is rendered into a separate 192 px cache entry so it stays sharper than an enlarged copy of the normal 64 px list thumbnail.
+
+### 0.7.44 Planning / Analyze list thumbnails
+
+Planning and Analyze Existing now show cached KSP part thumbnails in their candidate-engine rows. Planning tank-set rows show a thumbnail for each tank type in the set, and Analyze Existing's Current engines table shows the installed engine part image.
+
+### 0.7.42 Thumbnail visibility fix
+
+Stage-By-Stage engine/tank thumbnails now build their transparency explicitly from an opaque chroma-key render, avoiding invisible textures when KSP's editor-icon shader leaves the render target alpha at zero.
+
+### 0.7.41 Stage-By-Stage part thumbnails
+
+Engine and tank rows in the Stage-By-Stage stage contents list now show a small thumbnail of the KSP part beside the line. The thumbnail is generated from KSP's editor icon prefab and cached for reuse.
+
+### 0.7.40 bundled RSS delta-v table
+
+Added `GameData/VesselPlanner/PluginData/DeltaVTables/RSS.csv`, normalized for VesselPlanner's self-row/route-row model. The supplied RSS data now uses real parent-body origins for moon routes, complete interplanetary transfer totals, integer sort orders, and corrected body names. Geostationary/L1/L2 pseudo-destinations are intentionally omitted so they do not appear in Mission Planner body lists.
+
+### 0.7.39 bundled GPP delta-v table
+
+Added `GameData/VesselPlanner/PluginData/DeltaVTables/GPP.csv`, aligned with VesselPlanner's self-row/route-row CSV model and the bundled GPP Release 1.6.0 delta-v map. GPP installations detected by `PlanetPackHeuristics` can now load the matching table automatically.
+
+### 0.7.38 bundled JNSQ delta-v table
+
+Added `GameData/VesselPlanner/PluginData/DeltaVTables/JNSQ.csv`, structured for VesselPlanner's current self-row/route-row CSV model. JNSQ installations detected by `PlanetPackHeuristics` can now load a bundled table automatically.
+
+### 0.7.37 CommonRoutines compile fix
+
+Fixed the remaining unqualified `GetDryPartMass` call in `EditorStageScanner` after the 0.7.36 CommonRoutines refactor.
+
+### 0.7.36 shared common-routines cleanup
+
+`VesselPlanner.Core.CommonRoutines` now owns the reusable helper logic that had been duplicated across the UI, persistence, scanner, database, and solver code. This is an internal refactor: plan formats and user-facing behavior are unchanged. Unity lifecycle callbacks and cache-specific reload methods remain in their owning classes because they depend on class state.
+
+### 0.7.35 shared maneuver formatter
+
+`FormatManeuver` is shared through `VesselPlanner.Core.CommonRoutines`, so Mission Planner and Stage-By-Stage use the same readable maneuver labels.
+
+### 0.7.34 tank-filter layout and Stage-By-Stage tank action
+
+The tank **Filter** and **Exclude** fields now share one row, matching the engine filter layout. While a Stage-By-Stage stage is open, every tank suggestion action button is labeled **Add to Stage** (including mixed tank sets); outside Stage-By-Stage the existing **Add Tank** / **Add Set** labels remain.
+
+### 0.7.33 individual filter persistence
+
+**Settings → Filters** now provides four independent persistence toggles: engine include Filter, engine Exclude, tank include Filter, and tank Exclude. Each text field saves/restores independently. Turning one persistence option off clears only that field's saved value while leaving the current-session text and the other filter in the same category unchanged. Existing 0.7.32 pair settings migrate automatically.
+
+### 0.7.32 include/exclude filter lists and persistence
+
+Engine and tank text filters now have separate **Filter** and **Exclude** fields. Each accepts multiple comma-separated terms: Filter terms use OR matching, while any matching Exclude term removes the candidate. Filter values are saved automatically while their persistence option is enabled. **Settings → Filters** independently controls whether the engine Filter/Exclude pair and tank Filter/Exclude pair are restored across KSP sessions.
+
+### 0.7.31 Mission/Stage-By-Stage naming and Source body sizing
+
+The Add/Edit Mission Step transfer Source body display now uses `GUILayout.Height(30)`. When a saved Mission Planner plan is selected in Stage-By-Stage, the Stage-By-Stage plan name is initialized from the mission plan name and remains editable.
+
+### 0.7.30 Mission Planner polish and moon-return delta-v
+
+The New/Edit Stage dialog is slightly taller. Mission Planner now starts as **Unnamed Mission**, its delete X is red, maneuver dropdown labels are human-readable with spaces, and **Return From A Moon** automatically loads its Needed Δv from the active delta-v CSV using the moon ascent value plus the reverse moon-escape leg derived from the parent-to-moon capture value.
+
+### 0.7.29 booster-layout spacing
+
+The Stage-By-Stage booster-layout controls are now stacked vertically: **Side Boosters** first, **Core burns too** on the next line, and conditional **Radial decouplers** below that.
+
+### 0.7.28 booster layout, tank sets, and localized engines
+
+Stage-By-Stage Engines & Tanks stages now include **Side Boosters** and **Core burns too** layout toggles. When Side Boosters is enabled, **Radial decouplers** is also available. These choices are saved with the stage as layout annotations. Tank analysis now evaluates sets of up to three different tank types as long as every type shares one KSP bulkhead profile. ComboBox dropdown text matches the normal button font, and engine names use KSP localization when available.
+
+### 0.7.27 Mission Planner step types
+
+Mission Planner steps now use the same mutually exclusive type model as Stage-By-Stage: choose **Engines & Tanks** for a maneuver/Delta-v step or **Subassemblies** for a saved-subassembly step. A step cannot contain both. Subassemblies steps use the same available/selected list, Count, and per-copy Decoupler controls, and they open directly as Subassemblies stages when used from Stage-By-Stage.
+
+### 0.7.26 Mission Planner subassembly workflow
+
+The Mission Planner Subassemblies step editor uses the same available/selected two-list workflow as Stage-By-Stage Subassemblies stages, including the same list sizing, per-line **Count**, per-line **Decoupler**, duplicate-add count incrementing, Remove behavior, mass details, and validation.
+
+### 0.7.25 terminology and mode-button layout
+
+Mission Planner and Stage-By-Stage now use **Subassembly/Subassemblies** consistently in the UI to match KSP terminology. The **Mission Planner** and **Stage-By-Stage** mode buttons are grouped at the left edge of the main window, with a clear gap before **Analyze Existing** and **Planning**.
+
 
 > **[IMAGE PLACEHOLDER: Main VesselPlanner window in the VAB/SPH]**
 
@@ -56,11 +137,12 @@ VesselPlanner can read older EngineStagePlanner settings, Stage-By-Stage plans, 
 
 Click the **VesselPlanner** ToolbarController button. Look for the transparent checklist-and-rising-graph icon.
 
-The editor window has three operating modes:
+The editor window has four operating modes:
 
-- **Planning** — design a stage that does not yet exist.
-- **Analyze Existing** — inspect a stage already on the vessel and compare replacement engines.
+- **Mission Planner** — build an ordered maneuver list and estimate required delta-v from a planet-pack CSV table.
 - **Stage-By-Stage** — build and save a complete vessel plan one stage at a time.
+- **Analyze Existing** — inspect a stage already on the vessel and compare replacement engines.
+- **Planning** — design a stage that does not yet exist.
 
 ### In Flight
 
@@ -89,6 +171,7 @@ Set the values in the **Requirements** pane:
 - **Minimum TWR** — minimum acceptable thrust-to-weight ratio.
 - **Payload** — mass carried above the new stage.
 - **Body** — celestial body used for gravity and atmospheric calculations.
+  Planning and Analyze Existing use the same shared ComboBox-style dropdown as Mission Planner for this selector.
 - **Altitude** — altitude used for atmospheric thrust and Isp.
 - **Max engines** — largest engine cluster VesselPlanner should test.
 - **Tank structural ratio** — estimated tank dry mass divided by propellant mass.
@@ -113,19 +196,18 @@ The **Selected Engine** pane shows detailed information for that solution, inclu
 
 ### Step 5 — Select a tank
 
-The **Tanks** pane shows tank combinations that can hold the required propellant.
+The **Tanks** pane shows tank sets that can hold the required propellant. VesselPlanner evaluates sets containing one, two, or three different tank types; every tank type in a set must share the same KSP `bulkheadProfiles` value used for that suggestion. Use **Filter** and **Exclude** above the table to narrow the list by tank display or internal part name. Each field accepts comma-separated terms. Filter terms are OR matches; if any Exclude term matches any tank in the set, that suggestion is hidden. Only storage parts that have both a `top` and a `bottom` attach node are offered as tank candidates.
 
 Each row shows information such as:
 
-- tank name
-- number required
-- dry mass
-- cost efficiency in kilograms of required-propellant capacity per Fund
+- tank set (including the count of each tank type)
+- total number of tanks
+- total dry mass
 - excess capacity
-- total capacity
-- KSP bulkhead profile
+- total supplied capacity
+- shared KSP bulkhead profile
 
-Click a tank row to select it. The selected tank is highlighted and is also shown beneath the selected engine name. The sortable **Cost Eff.** column is the total mass capacity of the selected engine's required propellants, in kilograms, divided by the total cost of the suggested tank combination in Funds.
+Click a tank-set row to select it. The selected set is highlighted and is also shown beneath the selected engine name.
 
 > **[IMAGE PLACEHOLDER: Tanks pane with one tank row selected]**
 
@@ -135,9 +217,10 @@ Depending on what you are doing, use:
 
 - **Add** — selects the engine part for placement in the editor.
 - **Add Engine** — selects the currently highlighted engine for placement.
-- **Add Tank** — selects one copy of that tank for placement.
+- **Add Tank** — for a one-type suggestion, selects one copy of that tank for placement.
+- **Add Set** — for a mixed suggestion, starts placement with the first tank type and reports the complete set/counts to place.
 
-When a Stage-By-Stage stage is open, these buttons add the selected parts to the plan instead of placing them directly on the editor cursor.
+When a Stage-By-Stage stage is open, the tank-row action is labeled **Add to Stage** for both one-type and mixed tank sets and records that complete tank set in the current stage. **Add Engine & Tanks** captures the selected engine and complete selected tank set together.
 
 ---
 
@@ -192,6 +275,8 @@ Useful filters include:
 - **Match stage bulkhead size**
 - **Ignore monopropellant**
 
+The **Planet / body** selector in Analyze Existing now uses the same shared ComboBox dropdown as Planning and Mission Planner. Changing the body still clamps altitude to the valid atmosphere range and immediately recalculates the simulation environment.
+
 Click **Add** or **Add Engine** to select a replacement engine for placement in the editor.
 
 ---
@@ -237,7 +322,42 @@ You can sort engine solutions by goals such as:
 
 # Stage-By-Stage Instructions
 
-## 7. Creating a Stage-By-Stage Plan
+
+---
+
+## 7. Mission Planner
+
+Select **Mission Planner** at the top of the editor window to build an ordered mission maneuver list. The page uses the same VesselPlanner window background and skin as the other editor modes.
+
+Each mission row shows the maneuver, selected body or route, optional subassemblies, required delta-v, and ASL/VAC basis. **Double-click a row** to edit that maneuver in the entry window. Row actions use compact controls: **+▲** inserts above, **-▼** inserts below, **▲** and **▼** reorder the row, and **✖** deletes it. The bottom **Add New Maneuver** button appends a new maneuver.
+
+Each maneuver can optionally add saved KSP **Subassemblies**. Enable **Add** in the maneuver-entry window to reveal the same available/selected subassembly workflow used by Stage-By-Stage. Add one or more subassemblies, set a whole-number **Count** for each selected line, and independently enable **Decoupler** on each line. Adding the same subassembly again increases its count. VesselPlanner reads `.craft` files from `saves/<current save>/Subassemblies`, shows the calculated wet mass beside each subassembly, and uses the root part's bulkhead profile(s) to obtain a per-copy decoupler reference mass from `GameData/VesselPlanner/decouplerMasses.cfg`. If Count is 3 and Decoupler is enabled, that mission step carries three subassembly copies and three decouplers. The stored mission-step subassembly mass is the sum of every selected copy plus every selected decoupler. The subassembly mass calculation includes saved part masses, craft `modMass` adjustments, and stored resources. Subassemblies whose mass cannot be resolved remain unavailable for adding.
+
+Enter a **Mission name** at the top of the page. **Save** writes the maneuver list to `GameData/VesselPlanner/PluginData/MissionPlans/<Mission name>.cfg` (invalid filename characters are replaced safely), and **Load** opens a list of saved mission plans. Loading restores the mission name and every maneuver's body/route, subassembly entries/counts/decouplers, required delta-v, and ASL/VAC basis. Mission files created by 0.7.20/0.7.21 with one subassembly are converted to a one-entry subassembly list when loaded.
+
+The maneuver dropdown uses readable labels with spaces, including **Sub Orbital Launch**, **Resource Transfer**, **Transfer To Another Planet**, and **Return From A Moon**. Internally, the existing maneuver enum values are unchanged so saved missions remain compatible.
+
+Body selection follows the maneuver. **Launch** and **SubOrbitalLaunch** default their body selector to KSP's home body when there is no earlier Landing, or to the body from the most recent earlier **Landing** maneuver; that default remains editable so another body can be selected. Other body-specific maneuvers select one body, and **Return From A Moon** selects a moon. For **TransferToAnotherPlanet**, the destination is selected but the source is read-only and comes from the immediately preceding maneuver. If that preceding maneuver is also a transfer, its destination is used as the source. A transfer therefore requires a preceding maneuver with a body. Every maneuver has an editable required delta-v and an **ASL** or **VAC** basis.
+
+Mission Planner loads its body/route data from:
+
+```text
+GameData/VesselPlanner/PluginData/DeltaVTables/<packName>.csv
+```
+
+The CSV columns are:
+
+```text
+Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
+```
+
+When Mission Planner initializes, VesselPlanner detects the active planet pack with `PlanetPackHeuristics`. Known packs use the `PlanetPackKind` name (for example `Stock`, `JNSQ`, `RSS`, or `OPM`); a single unrecognized custom pack uses its detected GameData folder name. Mission Planner then loads `<packName>.csv` from `DeltaVTables`. The included starter tables are `Stock.csv`, `JNSQ.csv`, `GPP.csv`, and `RSS.csv`.
+
+When a matching row is available, Launch/Sub-Orbital Launch loads `dV_to_low_orbit` for its selected launch body, Transfer To Another Planet loads `total_capture_dV`, and Landing/Splashdown loads `dV_low_orbit_to_surface`. **Return From A Moon** loads the moon self-row's `ascent_dV` (falling back to `dV_to_low_orbit`) plus the matching parent-to-moon row's `capture_dV`, which represents the reverse moon-escape leg. The loaded value can always be edited manually.
+
+For **Transfer To Another Planet**, VesselPlanner also watches the system clipboard while the maneuver entry window is open. A **Clipboard Δv** dropdown selects **Ejection**, **Insertion**, or **Total**. The choices map directly to the matching clipboard lines: **Ejection** reads only `Ejection Δv:`, **Insertion** reads only `Insertion Δv:`, and **Total** reads only `Total Δv:`. Changing the selection immediately reloads that value into Needed Δv. A matching clipboard value takes precedence over the CSV suggestion; unrelated clipboard routes are ignored. The **Clipboard Δv** dropdown is disabled when the clipboard does not contain usable transfer data for the currently selected destination/route, and it enables automatically when matching data is present. The disabled state now closes any already-open clipboard popup through the ComboBox API, avoiding direct access to ComboBox internals.
+
+## 8. Creating a Stage-By-Stage Plan
 
 Use **Stage-By-Stage** to design and save an entire vessel before building it.
 
@@ -255,7 +375,13 @@ The plan window contains:
 - vessel/craft name
 - payload mass
 - starting body
+- a **Select Mission Plan** button
 - list of planned stages
+
+Use **Select Mission Plan** to choose a mission saved from Mission Planner. The selected mission is displayed in a dedicated, **left-justified** list along the **left** side of the Stage-By-Stage window, with the mission's last maneuver at the top and its first maneuver at the bottom. The maneuver buttons are taller to make multi-line mission entries easier to read and click. Selecting a mission does not replace or clear the current Stage-By-Stage plan.
+
+Click a mission line to open **New Stage** for that maneuver. VesselPlanner copies the maneuver's required delta-v and ASL/VAC basis and also copies every subassembly entry assigned to the mission step, including each count and Decoupler selection. In **Engines & Tanks** mode the dialog shows a read-only Mission subassemblies summary and includes the complete subassembly-plus-decoupler mass as fixed stage dry mass during Calculate. The linked stage list shows every counted subassembly and its matching decoupler rows before the propulsion parts. The stage is linked to the mission-plan name, mission step number, and maneuver; each stage row shows a second line such as **Mission step 4: Landing**. If that mission step already has a linked stage, clicking the mission line opens the existing stage in **Edit Stage** instead of creating a duplicate. Because the mission subassemblies and their decouplers are part of the completed stage wet mass, they are automatically carried into the payload of every lower stage.
+When **Calculate** is clicked from **Edit Stage**, VesselPlanner sets the Planning body to the **last body referenced in the selected or linked mission plan** before solving the stage. If the final body-bearing maneuver is an interplanetary transfer, its destination body is used.
 
 When you start a new Stage-By-Stage plan, **Payload (t)** is initialized automatically:
 
@@ -271,25 +397,20 @@ Click **New Stage**.
 The **New Stage** dialog opens immediately to the right of the Stage-By-Stage Plan window, with both top edges aligned and the dialog's left edge adjacent to the plan window's right edge.
 The New Stage/Edit Stage dialog uses the same **0.36** gray solid background shade as the Stage-By-Stage Plan.
 
-The New Stage dialog is modal. Other VesselPlanner windows cannot be used until you click **Calculate** or **Cancel**.
+The New Stage dialog is modal. Other VesselPlanner windows cannot be used until you finish or cancel the stage.
 
-Enter:
+First choose the **Stage type**:
 
-- **Target Δv**
-- **Δv basis**
-- **Minimum TWR**
-- **Max engines**
-- **Additional Cargo Mass**
-- **Add decoupler mass**
-- optional **Bulkhead profiles**
+- **Engines & Tanks** — the normal propulsion stage workflow. Enter **Target Δv**, **Δv basis**, **Minimum TWR**, **Max engines**, **Additional Cargo Mass**, optional **Add decoupler mass**, and optional **Bulkhead profiles**, then click **Calculate**.
+- **Subassemblies** — a non-solver stage made from one or more saved KSP subassemblies. The dialog lists the current save's subassemblies and their calculated wet masses. Click **Add** for each one you want, set the **Count**, and independently enable **Decoupler** for each subassembly line. Click **Add Stage** (or **Save Stage** while editing) when finished. The Subassemblies New/Edit Stage dialog is taller so the stage-mass and action controls remain fully visible below the two lists.
 
-**Additional Cargo Mass** is non-propellant dry mass carried by that stage. It is separate from the vessel payload.
+**Additional Cargo Mass** is non-propellant dry mass carried by an Engines & Tanks stage. It is separate from the vessel payload.
 
-When **Add decoupler mass** is enabled, VesselPlanner adds the decoupler mass for the selected stack profile to the stage's fixed dry mass. The values come from `GameData/VesselPlanner/decouplerMasses.cfg`. If several matching stack profiles are selected, the largest matching decoupler mass is used. `srf` has no decoupler mass entry.
+For an Engines & Tanks stage, **Add decoupler mass** adds one stage decoupler using the selected stack profile. Engines & Tanks stages also have **Side Boosters** and **Core burns too** layout toggles. When **Side Boosters** is enabled, **Radial decouplers** appears as an additional toggle. These booster-layout choices are saved with the stage and shown in its summary; they describe the intended arrangement and do not add an inferred radial-decoupler mass. For a Subassemblies stage, each subassembly line has its own **Decoupler** toggle. If the count is 3 and Decoupler is enabled, the stage includes three decouplers. The reference mass comes from `GameData/VesselPlanner/decouplerMasses.cfg` using the saved subassembly root part's bulkhead profile(s); when several profiles match, the largest matching value is used.
 
-For Stage 2 and later, the dialog also shows **Previous stages mass**. This is the original plan payload plus the full wet mass of all previously planned stages, and it is automatically used as the payload for the new stage.
+For Stage 2 and later, the dialog also shows **Previous stages mass**. This is the original plan payload plus the full wet mass of all previously planned stages, including Subassemblies stages and their selected decouplers, and it is automatically used as the payload for the new stage.
 
-Tab moves through the numeric entry fields; Shift+Tab moves backward.
+In Engines & Tanks mode, Tab moves through the numeric entry fields; Shift+Tab moves backward.
 
 > **[IMAGE PLACEHOLDER: New Stage dialog with all entry fields visible]**
 
@@ -301,7 +422,7 @@ VesselPlanner presets the Bulkhead Profiles selection when a new stage is opened
 - For later stages, the profile comes from the selected engine in the previous stage, using that engine's `bottom` node and falling back to its `top` node.
 - If no applicable node can be found, no profile is preselected.
 
-You can then open the Bulkhead Profiles list and change the selection as needed.
+The **Bulkhead profiles** control uses the original inline multi-select list. Click the summary button to expand or collapse the list, then toggle profiles directly. An automatically preset profile is only a default: the first different profile you manually select **replaces** that preset, so choosing one profile filters only to that profile. After that first manual choice you may select additional profiles intentionally for a multi-profile stage. The list stays open while selections are changed. Choose **Clear selection** to remove all profile restrictions and consider every profile. New/Edit Stage remains modal while this inline list is open.
 
 - `srf` is listed first for surface-attached parts.
 - stack profiles such as `size0`, `size1`, `size1p5`, `size2`, and so on follow it.
@@ -335,6 +456,8 @@ You can also use the individual **Add**, **Add Engine**, and **Add Tank** contro
 
 > **[IMAGE PLACEHOLDER: Stage-By-Stage stage after engine and tanks have been added]**
 
+An **Engines & Tanks** stage lists any mission subassemblies first (including per-copy mission decouplers), then selected **tanks**, the optional stage **decoupler**, and selected **engines**. A **Subassemblies** stage lists each subassembly with its quantity and mass; when that line's Decoupler option is enabled, a matching decoupler line is shown with the same quantity. All of these subassembly/decoupler masses are part of the completed stage wet mass used as payload for all lower stages.
+
 ### Step 7 — Finish or edit the stage
 
 Use:
@@ -361,7 +484,7 @@ Click **Finalize** when the stage plan is complete.
 After finalizing:
 
 - New Stage is no longer available.
-- Each planned part receives an **Add** button for placing it in the editor.
+- Planned engine/tank parts receive an **Add** button for placing them in the editor. Subassembly stages remain listed with their quantities/decouplers and are placed using KSP's normal saved-subassembly workflow.
 - The main planner closes so the plan can be used as a build list.
 
 Use **Reopen** if you need to edit the plan again.
@@ -381,7 +504,7 @@ Deleting requires confirmation and removes only the saved plan file.
 
 # Settings
 
-## 8. Editor Settings
+## 9. Editor Settings
 
 Click **Settings** in the editor planner.
 
@@ -409,6 +532,10 @@ You can also choose whether the planner closes after a successful engine Add ope
 
 Choose whether the planner closes after a successful Add, Add Engine, or Add Tank operation.
 
+### Filters
+
+Engine and tank text filtering each provide a **Filter** field and an **Exclude** field. Both accept comma-separated terms. Filter terms use OR matching; any matching Exclude term hides the candidate. Text changes take effect immediately. The Filters settings page independently controls persistence for engine include, engine Exclude, tank include, and tank Exclude. All four persistence options are enabled by default.
+
 ### Appearance
 
 Appearance options include:
@@ -422,7 +549,7 @@ Solid backgrounds are enabled by default for new configurations. The setting app
 
 # Flight Telemetry
 
-## 9. Using the Flight Graph
+## 10. Using the Flight Graph
 
 Click the VesselPlanner toolbar button while in Flight.
 
@@ -478,7 +605,7 @@ GameData/VesselPlanner/PluginData/FlightSensorMaxima.tsv
 
 ---
 
-## 10. Flight Settings and Export
+## 11. Flight Settings and Export
 
 Open **Settings** from the flight graph.
 
@@ -519,7 +646,7 @@ Use:
 
 # Reference
 
-## 11. Important Calculation Notes
+## 12. Important Calculation Notes
 
 ### TWR
 
@@ -544,7 +671,7 @@ Propellant requirements are shown in KSP resource units and mass. Where resource
 
 ---
 
-## 12. Files Created by VesselPlanner
+## 13. Files Created by VesselPlanner
 
 Typical persistent files are stored under:
 
@@ -558,7 +685,9 @@ Important files and folders include:
 VesselPlannerSettings.cfg          Editor and flight settings
 FlightSensorMaxima.tsv             Per-vessel telemetry maxima
 Plans/                             Saved Stage-By-Stage plans
+MissionPlans/                      Saved Mission Planner missions
 CSV/                               Default CSV export folder
+DeltaVTables/*.csv                 Mission Planner planet-pack body/route delta-v tables
 ```
 
 The Stage-By-Stage decoupler/stack-separator reference table is stored at:
@@ -575,7 +704,7 @@ KSP_ROOT/Screenshots
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### VesselPlanner does not appear
 
@@ -590,7 +719,7 @@ Check that:
 
 Check:
 
-- engine-name filters
+- engine include/exclude text filters
 - propellant filters
 - bulkhead-profile selections
 - editor part filters supplied by other mods
@@ -611,7 +740,7 @@ Plans created before cargo support load with **Additional Cargo Mass = 0**.
 
 The repository `jenkins.txt` is configured for VesselPlanner release builds. It packages `VesselPlanner.version`, `License.md`, `README.md`, and the `Manual` folder under `GameData/VesselPlanner`.
 
-## 14. License
+## 15. License
 
 See `License.md` for license information.
 

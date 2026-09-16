@@ -26,6 +26,9 @@ namespace VesselPlanner.Core
     public sealed class EngineCandidate
     {
         public string PartName { get; set; }
+        // Unique KSP GameData URL for the loaded part. Used by thumbnail lookup so
+        // duplicate internal part names from different mods cannot select the wrong icon.
+        public string PartUrl { get; set; }
         public string DisplayName { get; set; }
         public double MassTons { get; set; }
         public double Cost { get; set; }
@@ -212,6 +215,10 @@ namespace VesselPlanner.Core
 
     public sealed class ExistingEngineInfo
     {
+        // Internal KSP part name used as a fallback when a part URL is unavailable.
+        public string PartName { get; set; }
+        // Exact AvailablePart URL for the installed part.
+        public string PartUrl { get; set; }
         public string DisplayName { get; set; }
         public double SeaLevelThrustKn { get; set; }
         public double VacuumThrustKn { get; set; }

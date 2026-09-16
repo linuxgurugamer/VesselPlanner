@@ -23,6 +23,7 @@ namespace VesselPlanner.UI
         private Vector2 _settingsScroll;
         private readonly PlannerUiSettings _uiSettings = new PlannerUiSettings();
         private StagePlanWindow _stagePlan;
+        private readonly MissionPlannerPage _missionPlanner = new MissionPlannerPage();
         private Vector2 _resultsScroll;
         private Vector2 _detailScroll;
         private Vector2 _tankScroll;
@@ -31,6 +32,7 @@ namespace VesselPlanner.UI
         private Vector2 _currentEnginesScroll;
         private bool _planningMode = true;
         private bool _stageByStageMode;
+        private bool _missionPlannerMode;
         private bool _simulateOnAnalyzeEntry;
         private int _stage;
         private string _stageText = "0";
@@ -40,6 +42,7 @@ namespace VesselPlanner.UI
         // Stage-By-Stage-only dry cargo mass belonging to the stage currently being solved.
         private double _plannedStageCargoMassTons;
         private double _plannedStageDecouplerMassTons;
+        private double _plannedStageAssemblyMassTons;
         private string _maxEngines = "8";
         private string _tankRatio = "0.125";
         private bool _useCraftPayload = true;
@@ -55,20 +58,18 @@ namespace VesselPlanner.UI
         private bool _editorLogicWasEnabled;
         private bool _releasePickGuardsWhenMouseReleased;
         private const string PickStageInputLockId = "VesselPlanner_PickStageFromPart";
+        private const int PlanningBodyComboId = 41007;
+        private const int AnalysisBodyComboId = 41008;
         private static readonly FieldInfo StageGroupDragHandlerField = typeof(StageGroup).GetField("dragHandler", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private string _engineNameFilter = "";
+        private string _engineExcludeFilter = "";
+        private string _tankNameFilter = "";
+        private string _tankExcludeFilter = "";
         private readonly List<CelestialBody> _bodies = new List<CelestialBody>();
         private int _selectedBodyIndex;
         private double _altitudeMeters;
-        private bool _showPlanetDropdown;
-        private Vector2 _planetScroll;
-        private Rect _planetButtonWindowRect;
         private Rect _stageByStageButtonWindowRect;
-        private Rect _planetDropdownWindowRect;
         private const float PlanetButtonWidth = 180f;
-        private const float PlanetButtonHeight = 24f;
-        private const float PlanetDropdownScrollbarWidth = 18f;
-        private const float PlanetDropdownMaxHeight = 170f;
         private const float MinWindowWidth = 1150f;
         private const float MaxWindowWidth = 1850f;
         private const float MinWindowHeight = 620f;
@@ -154,6 +155,9 @@ namespace VesselPlanner.UI
         private StageSolution _selected;
         private ExistingStageSnapshot _snapshot;
         private string _status = "";
+        private Texture2D _hoverPartPreviewTexture;
+        private Rect _hoverPartPreviewSourceScreenRect;
+        private const float HoverPartPreviewSize = 160f;
         static private GUIStyle _right;
         private SolutionSortColumn _solutionSortColumn = SolutionSortColumn.None;
         private bool _solutionSortAscending = true;
@@ -167,7 +171,7 @@ namespace VesselPlanner.UI
 
         private enum TankSortColumn
         {
-            None, Tank, Count, DryMass, CostEfficiency, Excess, Bulkhead, Capacity
+            None, Tank, Count, DryMass, Excess, Bulkhead, Capacity
         }
 
         private enum SolutionColumn
@@ -226,6 +230,14 @@ namespace VesselPlanner.UI
             private float _analysisListHeightOffset;
             private float _planningListHeightOffset;
             private float _mainWindowWidth = 1150f;
+            private bool _saveEngineFilter = true;
+            private bool _saveEngineExcludeFilter = true;
+            private bool _saveTankFilter = true;
+            private bool _saveTankExcludeFilter = true;
+            private string _engineFilter = "";
+            private string _engineExcludeFilter = "";
+            private string _tankFilter = "";
+            private string _tankExcludeFilter = "";
 
             public PlannerUiSettings()
             {
@@ -327,6 +339,54 @@ namespace VesselPlanner.UI
                 set { _mainWindowWidth = Mathf.Clamp(value, MinWindowWidth, MaxWindowWidth); }
             }
 
+            public bool SaveEngineFilter
+            {
+                get { return _saveEngineFilter; }
+                set { _saveEngineFilter = value; }
+            }
+
+            public bool SaveEngineExcludeFilter
+            {
+                get { return _saveEngineExcludeFilter; }
+                set { _saveEngineExcludeFilter = value; }
+            }
+
+            public bool SaveTankFilter
+            {
+                get { return _saveTankFilter; }
+                set { _saveTankFilter = value; }
+            }
+
+            public bool SaveTankExcludeFilter
+            {
+                get { return _saveTankExcludeFilter; }
+                set { _saveTankExcludeFilter = value; }
+            }
+
+            public string EngineFilter
+            {
+                get { return _engineFilter ?? string.Empty; }
+                set { _engineFilter = value ?? string.Empty; }
+            }
+
+            public string EngineExcludeFilter
+            {
+                get { return _engineExcludeFilter ?? string.Empty; }
+                set { _engineExcludeFilter = value ?? string.Empty; }
+            }
+
+            public string TankFilter
+            {
+                get { return _tankFilter ?? string.Empty; }
+                set { _tankFilter = value ?? string.Empty; }
+            }
+
+            public string TankExcludeFilter
+            {
+                get { return _tankExcludeFilter ?? string.Empty; }
+                set { _tankExcludeFilter = value ?? string.Empty; }
+            }
+
             private static string SettingsPath
             {
                 get
@@ -355,13 +415,13 @@ namespace VesselPlanner.UI
                     ConfigNode settings = node.GetNode("ENGINE_STAGE_PLANNER_SETTINGS") ?? node;
 
                     foreach (SolutionColumn column in Enum.GetValues(typeof(SolutionColumn)))
-                        _columns[column] = ReadBool(settings, "Column_" + column, _columns[column]);
+                        _columns[column] = CommonRoutines.ReadBool(settings, "Column_" + column, _columns[column]);
                     foreach (AnalysisLine line in Enum.GetValues(typeof(AnalysisLine)))
-                        _analysisLines[line] = ReadBool(settings, "Analysis_" + line, _analysisLines[line]);
-                    _closeAnalyzeExistingAfterAdd = ReadBool(settings, "CloseAnalyzeExistingAfterAdd", _closeAnalyzeExistingAfterAdd);
-                    _closePlanningAfterAdd = ReadBool(settings, "ClosePlanningAfterAdd", _closePlanningAfterAdd);
-                    _solidEditorWindowBackgrounds = ReadBool(settings, "SolidEditorWindowBackgrounds", _solidEditorWindowBackgrounds);
-                    UseAltSkin = ReadBool(settings, WindowSkin.SettingsKey, _useAltSkin);
+                        _analysisLines[line] = CommonRoutines.ReadBool(settings, "Analysis_" + line, _analysisLines[line]);
+                    _closeAnalyzeExistingAfterAdd = CommonRoutines.ReadBool(settings, "CloseAnalyzeExistingAfterAdd", _closeAnalyzeExistingAfterAdd);
+                    _closePlanningAfterAdd = CommonRoutines.ReadBool(settings, "ClosePlanningAfterAdd", _closePlanningAfterAdd);
+                    _solidEditorWindowBackgrounds = CommonRoutines.ReadBool(settings, "SolidEditorWindowBackgrounds", _solidEditorWindowBackgrounds);
+                    UseAltSkin = CommonRoutines.ReadBool(settings, WindowSkin.SettingsKey, _useAltSkin);
                     if (settings.HasValue("TargetDeltaVBasis"))
                     {
                         _targetDeltaVBasis = string.Equals(settings.GetValue("TargetDeltaVBasis"), "Atmospheric", StringComparison.OrdinalIgnoreCase)
@@ -388,6 +448,19 @@ namespace VesselPlanner.UI
                     _analysisListHeightOffset = ReadFloat(settings, "AnalysisListHeightOffset", _analysisListHeightOffset);
                     _planningListHeightOffset = ReadFloat(settings, "PlanningListHeightOffset", _planningListHeightOffset);
                     MainWindowWidth = ReadFloat(settings, "MainWindowWidth", _mainWindowWidth);
+                    // 0.7.32 stored one persistence flag per category. Use those legacy
+                    // flags as the defaults for the new per-field settings so existing users
+                    // keep the behavior they already selected.
+                    bool legacySaveEngineFilters = CommonRoutines.ReadBool(settings, "SaveEngineFilters", true);
+                    bool legacySaveTankFilters = CommonRoutines.ReadBool(settings, "SaveTankFilters", true);
+                    _saveEngineFilter = CommonRoutines.ReadBool(settings, "SaveEngineFilter", legacySaveEngineFilters);
+                    _saveEngineExcludeFilter = CommonRoutines.ReadBool(settings, "SaveEngineExcludeFilter", legacySaveEngineFilters);
+                    _saveTankFilter = CommonRoutines.ReadBool(settings, "SaveTankFilter", legacySaveTankFilters);
+                    _saveTankExcludeFilter = CommonRoutines.ReadBool(settings, "SaveTankExcludeFilter", legacySaveTankFilters);
+                    _engineFilter = _saveEngineFilter && settings.HasValue("EngineFilter") ? settings.GetValue("EngineFilter") ?? string.Empty : string.Empty;
+                    _engineExcludeFilter = _saveEngineExcludeFilter && settings.HasValue("EngineExcludeFilter") ? settings.GetValue("EngineExcludeFilter") ?? string.Empty : string.Empty;
+                    _tankFilter = _saveTankFilter && settings.HasValue("TankFilter") ? settings.GetValue("TankFilter") ?? string.Empty : string.Empty;
+                    _tankExcludeFilter = _saveTankExcludeFilter && settings.HasValue("TankExcludeFilter") ? settings.GetValue("TankExcludeFilter") ?? string.Empty : string.Empty;
                 }
                 catch (Exception ex)
                 {
@@ -426,19 +499,24 @@ namespace VesselPlanner.UI
                     settings.SetValue("AnalysisListHeightOffset", _analysisListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("PlanningListHeightOffset", _planningListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("MainWindowWidth", _mainWindowWidth.ToString("0.##", CultureInfo.InvariantCulture), true);
+                    // Keep the old category flags for downgrade compatibility while the
+                    // new keys control each include/exclude field independently.
+                    settings.SetValue("SaveEngineFilters", _saveEngineFilter && _saveEngineExcludeFilter, true);
+                    settings.SetValue("SaveTankFilters", _saveTankFilter && _saveTankExcludeFilter, true);
+                    settings.SetValue("SaveEngineFilter", _saveEngineFilter, true);
+                    settings.SetValue("SaveEngineExcludeFilter", _saveEngineExcludeFilter, true);
+                    settings.SetValue("SaveTankFilter", _saveTankFilter, true);
+                    settings.SetValue("SaveTankExcludeFilter", _saveTankExcludeFilter, true);
+                    settings.SetValue("EngineFilter", _saveEngineFilter ? EngineFilter : string.Empty, true);
+                    settings.SetValue("EngineExcludeFilter", _saveEngineExcludeFilter ? EngineExcludeFilter : string.Empty, true);
+                    settings.SetValue("TankFilter", _saveTankFilter ? TankFilter : string.Empty, true);
+                    settings.SetValue("TankExcludeFilter", _saveTankExcludeFilter ? TankExcludeFilter : string.Empty, true);
                     root.Save(path);
                 }
                 catch (Exception ex)
                 {
                     Debug.LogWarning("[VesselPlanner] Unable to save UI settings: " + ex.Message);
                 }
-            }
-
-            private static bool ReadBool(ConfigNode node, string key, bool defaultValue)
-            {
-                if (node == null || !node.HasValue(key)) return defaultValue;
-                bool value;
-                return bool.TryParse(node.GetValue(key), out value) ? value : defaultValue;
             }
 
             private static float ReadFloat(ConfigNode node, string key, float defaultValue)
@@ -455,9 +533,14 @@ namespace VesselPlanner.UI
         public void Initialize()
         {
             _uiSettings.Load();
+            _engineNameFilter = _uiSettings.SaveEngineFilter ? _uiSettings.EngineFilter : string.Empty;
+            _engineExcludeFilter = _uiSettings.SaveEngineExcludeFilter ? _uiSettings.EngineExcludeFilter : string.Empty;
+            _tankNameFilter = _uiSettings.SaveTankFilter ? _uiSettings.TankFilter : string.Empty;
+            _tankExcludeFilter = _uiSettings.SaveTankExcludeFilter ? _uiSettings.TankExcludeFilter : string.Empty;
             _window.width = Mathf.Clamp(_uiSettings.MainWindowWidth, MinWindowWidth, MaxWindowWidth);
             RefreshBodies();
             RefreshDatabases();
+            _missionPlanner.Initialize();
             _stage = Math.Min(EditorStageScanner.MaxStage, Math.Max(0, _stage));
             _stageText = _stage.ToString(CultureInfo.InvariantCulture);
             RefreshStage();
@@ -471,11 +554,15 @@ namespace VesselPlanner.UI
             // Draw the main/settings windows first. Stage-By-Stage is rendered afterward so
             // its opaque underlay stays above the planner when the windows overlap. The plan
             // still draws when the planner itself is hidden (for example after Finalize).
+            if (!Visible) _missionPlanner.CloseEntry();
+
             if (Visible)
             {
                 ReleaseAbandonedSplitterDrag();
                 ReleaseAbandonedMainWindowWidthDrag();
                 _window.width = Mathf.Clamp(_window.width, MinWindowWidth, MaxWindowWidth);
+                // Draw combo-box popups before the GUILayout windows, as required by the shared popup implementation.
+                ComboBox.DrawGUI();
                 //DrawSolidEditorWindowBackground(_window);
                 // Width is controlled explicitly by the right-edge resize grip.  Fixing the
                 // GUILayout width prevents child controls from growing the outer window.
@@ -495,6 +582,7 @@ namespace VesselPlanner.UI
                 ClampSettingsWindow();
             }
 
+            if (Visible) _missionPlanner.DrawEntryWindow();
             StagePlan.Draw();
 
             // Starting or recalculating a Stage-By-Stage stage happens from the modal
@@ -510,13 +598,8 @@ namespace VesselPlanner.UI
 
         private void DrawWindow(int id)
         {
-            // Process dropdown input before the normal GUILayout controls so a click on an
-            // overlaid body button cannot also activate a control underneath it.  Repaint is
-            // deliberately deferred until the end of this method so the dropdown is drawn on
-            // top of all normal planner content while remaining in this window's local GUI
-            // coordinate system.
-            if (_showPlanetDropdown && Event.current.type != EventType.Repaint)
-                DrawPlanetDropdownOverlay();
+            if (Event.current != null && Event.current.type == EventType.Repaint)
+                _hoverPartPreviewTexture = null;
 
             using (new GUILayout.HorizontalScope())
             {
@@ -528,19 +611,17 @@ namespace VesselPlanner.UI
                 // brought back into line before the buttons are drawn.
                 if (!StagePlan.Visible) _stageByStageMode = false;
 
-                bool analyzeSelected = !_planningMode && !_stageByStageMode;
-                bool planningSelected = _planningMode && !_stageByStageMode;
+                bool analyzeSelected = !_missionPlannerMode && !_planningMode && !_stageByStageMode;
+                bool planningSelected = !_missionPlannerMode && _planningMode && !_stageByStageMode;
 
-                if (GUILayout.Toggle(analyzeSelected, "Analyze Existing", "Button", GUILayout.Height(25)) && !analyzeSelected)
+                bool missionSelected = GUILayout.Toggle(_missionPlannerMode, "Mission Planner", "Button", GUILayout.Height(25));
+                if (missionSelected && !_missionPlannerMode)
                 {
-                    _planningMode = false;
-                    _simulateOnAnalyzeEntry = true;
+                    ComboBox.Close(PlanningBodyComboId);
+                    ComboBox.Close(AnalysisBodyComboId);
+                    _missionPlannerMode = true;
                     LeaveStageByStage();
-                }
-                if (GUILayout.Toggle(planningSelected, "Planning", "Button", GUILayout.Height(25)) && !planningSelected)
-                {
-                    _planningMode = true;
-                    LeaveStageByStage();
+                    CancelStagePartPick(null);
                 }
                 // Stage-By-Stage is a third mode rather than a separate window toggle, so picking
                 // it deselects the other two. It still shows the Planning layout underneath,
@@ -550,6 +631,10 @@ namespace VesselPlanner.UI
                     _stageByStageButtonWindowRect = GUILayoutUtility.GetLastRect();
                 if (stageByStageSelected && !_stageByStageMode)
                 {
+                    _missionPlanner.CloseEntry();
+                    ComboBox.Close(PlanningBodyComboId);
+                    ComboBox.Close(AnalysisBodyComboId);
+                    _missionPlannerMode = false;
                     _stageByStageMode = true;
                     _planningMode = true;
                     StagePlan.PrepareForStageByStageStart();
@@ -557,11 +642,33 @@ namespace VesselPlanner.UI
                     StagePlan.Visible = true;
                 }
 
+                GUILayout.Space(18f);
+
+                if (GUILayout.Toggle(analyzeSelected, "Analyze Existing", "Button", GUILayout.Height(25)) && !analyzeSelected)
+                {
+                    _missionPlanner.CloseEntry();
+                    ComboBox.Close(PlanningBodyComboId);
+                    ComboBox.Close(AnalysisBodyComboId);
+                    _missionPlannerMode = false;
+                    _planningMode = false;
+                    _simulateOnAnalyzeEntry = true;
+                    LeaveStageByStage();
+                }
+                if (GUILayout.Toggle(planningSelected, "Planning", "Button", GUILayout.Height(25)) && !planningSelected)
+                {
+                    _missionPlanner.CloseEntry();
+                    ComboBox.Close(PlanningBodyComboId);
+                    ComboBox.Close(AnalysisBodyComboId);
+                    _missionPlannerMode = false;
+                    _planningMode = true;
+                    LeaveStageByStage();
+                }
+
                 // Planning may intentionally target stages beyond the craft that currently exists,
                 // but Analyze Existing can only inspect real vessel stages.  Enforce the current
                 // vessel maximum every frame so a staging edit which lowers the maximum also brings
                 // an already-selected stage back into range.
-                if (!_planningMode && _stage > EditorStageScanner.MaxStage)
+                if (!_missionPlannerMode && !_planningMode && _stage > EditorStageScanner.MaxStage)
                     SetStage(EditorStageScanner.MaxStage);
 
                 GUILayout.FlexibleSpace();
@@ -575,19 +682,26 @@ namespace VesselPlanner.UI
                 }
                 if (GUILayout.Button("×", GUILayout.Width(30)))
                 {
+                    _missionPlanner.CloseEntry();
                     Visible = false;
                     _settingsVisible = false;
                 }
             }
 
-            DrawStageSelector();
-            GUILayout.Space(4);
-            if (_planningMode) DrawPlanning(); else DrawAnalysis();
-
-            if (_showPlanetDropdown && Event.current.type == EventType.Repaint)
-                DrawPlanetDropdownOverlay();
+            if (_missionPlannerMode)
+            {
+                GUILayout.Space(4);
+                _missionPlanner.DrawPage();
+            }
+            else
+            {
+                DrawStageSelector();
+                GUILayout.Space(4);
+                if (_planningMode) DrawPlanning(); else DrawAnalysis();
+            }
 
             DrawMainWindowWidthResizeGrip();
+            DrawHoveredPartPreview();
 
             // Skipped mid-drag so a grip that has reached its limit cannot hand the rest of
             // the movement to the window. GUI.DragWindow is not a layout control, so leaving
@@ -669,6 +783,8 @@ namespace VesselPlanner.UI
                 return;
             }
 
+            if (_missionPlannerMode) return;
+
             if (!_pickStageFromPart)
             {
                 TrySelectStageFromStageListClick();
@@ -731,6 +847,7 @@ namespace VesselPlanner.UI
         public void Dispose()
         {
             CancelStagePartPick(null);
+            PartThumbnailCache.Clear();
             _uiSettings.Save();
         }
 
@@ -1033,7 +1150,7 @@ namespace VesselPlanner.UI
                         // two scrollbars this list now sits inside.
                         using (new GUILayout.HorizontalScope())
                         {
-                            GUILayout.Label("Engine", GUILayout.Width(100));
+                            GUILayout.Label("Engine", GUILayout.Width(130));
                             GUILayout.Label("ASL kN", GUILayout.Width(58));
                             GUILayout.Label("Vac kN", GUILayout.Width(58));
                             GUILayout.Label("Isp ASL/Vac", GUILayout.Width(68));
@@ -1043,7 +1160,11 @@ namespace VesselPlanner.UI
                         {
                             using (new GUILayout.HorizontalScope())
                             {
-                                GUILayout.Label(engine.DisplayName, GUILayout.Width(100));
+                                using (new GUILayout.HorizontalScope(GUILayout.Width(130f), GUILayout.Height(28f)))
+                                {
+                                    DrawPartThumbnail(engine.PartName, engine.PartUrl, 28f);
+                                    GUILayout.Label(engine.DisplayName, GUILayout.Width(98f), GUILayout.Height(28f));
+                                }
                                 GUILayout.Label(F(engine.SeaLevelThrustKn), GUILayout.Width(58));
                                 GUILayout.Label(F(engine.VacuumThrustKn), GUILayout.Width(58));
                                 GUILayout.Label(engine.SeaLevelIsp.ToString("0") + "/" + engine.VacuumIsp.ToString("0"), GUILayout.Width(68));
@@ -1137,6 +1258,8 @@ namespace VesselPlanner.UI
                 if (StagePlan.IsCapturing)
                 {
                     Row("Stage cargo mass", F(_plannedStageCargoMassTons) + " t");
+                    if (_plannedStageAssemblyMassTons > 0.0)
+                        Row("Subassembly mass", F(_plannedStageAssemblyMassTons) + " t");
                     if (_plannedStageDecouplerMassTons > 0.0)
                         Row("Decoupler mass", F(_plannedStageDecouplerMassTons) + " t");
                 }
@@ -1230,15 +1353,25 @@ namespace VesselPlanner.UI
 
             using (new GUILayout.HorizontalScope())
             {
-                GUILayout.Label("Engine name:", GUILayout.Width(85));
+                GUILayout.Label("Filter:", GUILayout.Width(85));
                 string newEngineNameFilter = GUILayout.TextField(_engineNameFilter ?? string.Empty, GUILayout.Width(220));
                 if (!string.Equals(newEngineNameFilter, _engineNameFilter, StringComparison.Ordinal))
                 {
                     _engineNameFilter = newEngineNameFilter;
+                    SaveEngineFilterIfEnabled();
+                    RecalculateForFilterChange();
+                }
+                GUILayout.Label("Exclude:", GUILayout.Width(65));
+                string newEngineExcludeFilter = GUILayout.TextField(_engineExcludeFilter ?? string.Empty, GUILayout.Width(220));
+                if (!string.Equals(newEngineExcludeFilter, _engineExcludeFilter, StringComparison.Ordinal))
+                {
+                    _engineExcludeFilter = newEngineExcludeFilter;
+                    SaveEngineExcludeFilterIfEnabled();
                     RecalculateForFilterChange();
                 }
                 GUILayout.FlexibleSpace();
             }
+            GUILayout.Label("Separate multiple filter terms with commas. Include terms are OR matches; any exclusion term removes a match.");
 
             bool bulkheadFilterChanged = false, planningStageOpen = false;
             using (new GUILayout.HorizontalScope())
@@ -1278,7 +1411,7 @@ namespace VesselPlanner.UI
                 GUILayout.Height(34f));
             using (new GUILayout.HorizontalScope())
             {
-                if (ColumnVisible(SolutionColumn.Engine)) SortHeader("Engine", 185, SolutionSortColumn.Engine);
+                if (ColumnVisible(SolutionColumn.Engine)) SortHeader("Engine", 225, SolutionSortColumn.Engine);
                 if (ColumnVisible(SolutionColumn.Count)) SortHeader("#", 28, SolutionSortColumn.Count);
                 if (ColumnVisible(SolutionColumn.EngineMass)) SortHeader("Mass t/eng", 78, SolutionSortColumn.EngineMass);
                 if (ColumnVisible(SolutionColumn.StageWetMass)) SortHeader("Stage Wet t", 95, SolutionSortColumn.StageWetMass);
@@ -1303,7 +1436,15 @@ namespace VesselPlanner.UI
             foreach (StageSolution s in _solutions.Take(250))
             {
                 if (s == _selected) GUILayout.BeginHorizontal("box"); else GUILayout.BeginHorizontal();
-                if (ColumnVisible(SolutionColumn.Engine) && GUILayout.Button(s.Engine.DisplayName, GUI.skin.label, GUILayout.Width(185))) SelectSolution(s);
+                if (ColumnVisible(SolutionColumn.Engine))
+                {
+                    using (new GUILayout.HorizontalScope(GUILayout.Width(225f), GUILayout.Height(36f)))
+                    {
+                        DrawPartThumbnail(s.Engine.PartName, s.Engine.PartUrl, 36f);
+                        if (GUILayout.Button(s.Engine.DisplayName, GUI.skin.label, GUILayout.Width(185f), GUILayout.Height(36f)))
+                            SelectSolution(s);
+                    }
+                }
                 if (ColumnVisible(SolutionColumn.Count)) GUILayout.Label(s.EngineCount.ToString(), GUILayout.Width(28));
                 if (ColumnVisible(SolutionColumn.EngineMass)) GUILayout.Label(F(s.Engine.MassTons), GUILayout.Width(78));
                 if (ColumnVisible(SolutionColumn.StageWetMass)) GUILayout.Label(F(s.StageWetMassTons), GUILayout.Width(95));
@@ -1343,7 +1484,8 @@ namespace VesselPlanner.UI
                 if (GUILayout.Toggle(_settingsTab == 0, "Engine Columns", "Button", GUILayout.Height(28))) _settingsTab = 0;
                 if (GUILayout.Toggle(_settingsTab == 1, "Analyze Existing", "Button", GUILayout.Height(28))) _settingsTab = 1;
                 if (GUILayout.Toggle(_settingsTab == 2, "Planning", "Button", GUILayout.Height(28))) _settingsTab = 2;
-                if (GUILayout.Toggle(_settingsTab == 3, "Appearance", "Button", GUILayout.Height(28))) _settingsTab = 3;
+                if (GUILayout.Toggle(_settingsTab == 3, "Filters", "Button", GUILayout.Height(28))) _settingsTab = 3;
+                if (GUILayout.Toggle(_settingsTab == 4, "Appearance", "Button", GUILayout.Height(28))) _settingsTab = 4;
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("×", GUILayout.Width(30))) _settingsVisible = false;
             }
@@ -1451,6 +1593,54 @@ namespace VesselPlanner.UI
                 }
                 GUILayout.Label("Applies to engine Add, Add Engine, and Add Tank buttons.");
             }
+            else if (_settingsTab == 3)
+            {
+                GUILayout.Label("Filter persistence");
+                GUILayout.Label("Filter text is applied immediately. Enable these options to also save the include and exclusion text automatically for the next KSP session.");
+                GUILayout.Space(8);
+
+                GUILayout.Label("Engines");
+                bool oldSaveEngineFilter = _uiSettings.SaveEngineFilter;
+                bool newSaveEngineFilter = GUILayout.Toggle(oldSaveEngineFilter, "Save engine include Filter");
+                if (newSaveEngineFilter != oldSaveEngineFilter)
+                {
+                    _uiSettings.SaveEngineFilter = newSaveEngineFilter;
+                    _uiSettings.EngineFilter = newSaveEngineFilter ? _engineNameFilter : string.Empty;
+                    changed = true;
+                }
+
+                bool oldSaveEngineExcludeFilter = _uiSettings.SaveEngineExcludeFilter;
+                bool newSaveEngineExcludeFilter = GUILayout.Toggle(oldSaveEngineExcludeFilter, "Save engine Exclude filter");
+                if (newSaveEngineExcludeFilter != oldSaveEngineExcludeFilter)
+                {
+                    _uiSettings.SaveEngineExcludeFilter = newSaveEngineExcludeFilter;
+                    _uiSettings.EngineExcludeFilter = newSaveEngineExcludeFilter ? _engineExcludeFilter : string.Empty;
+                    changed = true;
+                }
+
+                GUILayout.Space(8);
+                GUILayout.Label("Tanks");
+                bool oldSaveTankFilter = _uiSettings.SaveTankFilter;
+                bool newSaveTankFilter = GUILayout.Toggle(oldSaveTankFilter, "Save tank include Filter");
+                if (newSaveTankFilter != oldSaveTankFilter)
+                {
+                    _uiSettings.SaveTankFilter = newSaveTankFilter;
+                    _uiSettings.TankFilter = newSaveTankFilter ? _tankNameFilter : string.Empty;
+                    changed = true;
+                }
+
+                bool oldSaveTankExcludeFilter = _uiSettings.SaveTankExcludeFilter;
+                bool newSaveTankExcludeFilter = GUILayout.Toggle(oldSaveTankExcludeFilter, "Save tank Exclude filter");
+                if (newSaveTankExcludeFilter != oldSaveTankExcludeFilter)
+                {
+                    _uiSettings.SaveTankExcludeFilter = newSaveTankExcludeFilter;
+                    _uiSettings.TankExcludeFilter = newSaveTankExcludeFilter ? _tankExcludeFilter : string.Empty;
+                    changed = true;
+                }
+
+                GUILayout.Space(8);
+                GUILayout.Label("Comma-separated terms use OR matching. A candidate is hidden if any Exclude term matches its display name or internal part name.");
+            }
             else
             {
                 GUILayout.Label("Editor window appearance.");
@@ -1544,7 +1734,7 @@ namespace VesselPlanner.UI
 
             if (_selectedTank != null)
             {
-                GUILayout.Label("Selected Tank: " + _selectedTank.Tank.DisplayName + " × " + _selectedTank.Count);
+                GUILayout.Label("Selected Tanks: " + _selectedTank.TankSummary);
             }
 
             // Give the selected-engine contents a little breathing room below the
@@ -1620,59 +1810,195 @@ namespace VesselPlanner.UI
 
         private void DrawTankSuggestions()
         {
+            // Match the engine filter layout: include and exclude filters share one row.
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Filter:", GUILayout.Width(52f));
+                string oldFilter = _tankNameFilter;
+                _tankNameFilter = GUILayout.TextField(_tankNameFilter ?? string.Empty, GUILayout.Width(220f));
+                if (!string.Equals(oldFilter, _tankNameFilter, StringComparison.Ordinal))
+                {
+                    SaveTankFilterIfEnabled();
+                    if (_selectedTank != null && !TankMatchesTextFilter(_selectedTank))
+                        _selectedTank = null;
+                }
+
+                GUILayout.Label("Exclude:", GUILayout.Width(65f));
+                string oldExclude = _tankExcludeFilter;
+                _tankExcludeFilter = GUILayout.TextField(_tankExcludeFilter ?? string.Empty, GUILayout.ExpandWidth(true));
+                if (!string.Equals(oldExclude, _tankExcludeFilter, StringComparison.Ordinal))
+                {
+                    SaveTankExcludeFilterIfEnabled();
+                    if (_selectedTank != null && !TankMatchesTextFilter(_selectedTank))
+                        _selectedTank = null;
+                }
+            }
+
             if (_tankSuggestions.Count == 0)
             {
-                GUILayout.Label("No single available storage part can provide all required engine resources.");
+                GUILayout.Label("No compatible one-, two-, or three-type tank set can provide all required engine resources.");
+                return;
+            }
+
+            List<TankSuggestion> visibleTanks = _tankSuggestions
+                .Where(TankMatchesTextFilter)
+                .Take(100)
+                .ToList();
+            if (visibleTanks.Count == 0)
+            {
+                GUILayout.Label("No tank suggestions match the filter.");
                 return;
             }
 
             // The tank table occupies the wider right-hand Planning detail pane.
             // These widths favor the descriptive columns while retaining room for the
             // complete Add Tank button at the planner's minimum supported width.
-            const float tankNameWidth = 150f;
+            const float tankNameWidth = 250f;
             const float countWidth = 26f;
             const float dryMassWidth = 55f;
-            const float costEfficiencyWidth = 70f;
             const float excessWidth = 65f;
-            const float bulkheadWidth = 65f;
-            const float capacityWidth = 150f;
-            const float addWidth = 78f;
+            const float bulkheadWidth = 70f;
+            const float capacityWidth = 170f;
+            const float addWidth = 95f;
 
             using (new GUILayout.HorizontalScope())
             {
-                TankSortHeader("Tank", tankNameWidth, TankSortColumn.Tank);
+                TankSortHeader("Tank Set", tankNameWidth, TankSortColumn.Tank);
                 TankSortHeader("#", countWidth, TankSortColumn.Count);
                 TankSortHeader("Dry t", dryMassWidth, TankSortColumn.DryMass);
-                TankSortHeader("Cost Eff.", costEfficiencyWidth, TankSortColumn.CostEfficiency);
                 TankSortHeader("Excess", excessWidth, TankSortColumn.Excess);
                 TankSortHeader("Bulkhead", bulkheadWidth, TankSortColumn.Bulkhead);
                 TankSortHeader("Capacity", capacityWidth, TankSortColumn.Capacity);
                 Header("", addWidth);
             }
             _tankScroll = GUILayout.BeginScrollView(_tankScroll, GUILayout.Height(TankListScrollHeight()));
-            foreach (TankSuggestion t in _tankSuggestions.Take(100))
+            foreach (TankSuggestion t in visibleTanks)
             {
                 bool selected = ReferenceEquals(t, _selectedTank);
                 if (selected) GUILayout.BeginHorizontal("box"); else GUILayout.BeginHorizontal();
-                TankSelectionCell(t, t.Tank.DisplayName, tankNameWidth);
+                TankSelectionCellWithThumbnails(t, tankNameWidth);
                 TankSelectionCell(t, t.Count.ToString(), countWidth);
                 TankSelectionCell(t, F(t.TotalDryMassTons), dryMassWidth);
-                TankSelectionCell(t, t.CostEfficiency.ToString("0.###", CultureInfo.InvariantCulture), costEfficiencyWidth);
                 TankSelectionCell(t, (t.ExcessFraction * 100.0).ToString("0.0") + "%", excessWidth);
-                TankSelectionCell(t, TankBulkheadLabel(t.Tank), bulkheadWidth);
+                TankSelectionCell(t, TankSuggestionBulkheadLabel(t), bulkheadWidth);
                 TankSelectionCell(t, t.CapacitySummary, capacityWidth);
-                if (GUILayout.Button("Add Tank", GUILayout.Width(addWidth))) SpawnTank(t);
+                string addLabel = StagePlan.IsCapturing
+                    ? "Add to Stage"
+                    : (t.DifferentTankTypes > 1 ? "Add Set" : "Add Tank");
+                if (GUILayout.Button(addLabel, GUILayout.Width(addWidth))) SpawnTank(t);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
-            GUILayout.Label("Click a tank row to select it. # is the number of copies required. Cost Eff. is kg of required-propellant capacity per Fund. Add Tank places one copy on the editor cursor; repeat it for the indicated count.");
+            GUILayout.Label("Tank sets may use up to three different tank types, all with the same bulkhead profile. # is the total number of tanks. In Stage-By-Stage, Add Engine & Tanks captures the complete selected set.");
+        }
+
+        private void TankSelectionCellWithThumbnails(TankSuggestion tank, float width)
+        {
+            if (tank == null) return;
+
+            List<TankSuggestionPart> parts = tank.Tanks
+                .Where(item => item != null && item.Tank != null && item.Count > 0)
+                .Take(3)
+                .ToList();
+
+            const float thumbnailSize = 28f;
+            float textWidth = Mathf.Max(50f, width - (parts.Count * thumbnailSize) - 6f);
+            bool selected = false;
+            using (new GUILayout.HorizontalScope(GUILayout.Width(width), GUILayout.Height(thumbnailSize)))
+            {
+                foreach (TankSuggestionPart item in parts)
+                    DrawPartThumbnail(item.Tank.PartName, item.Tank.PartUrl, thumbnailSize);
+
+                selected = GUILayout.Button(
+                    new GUIContent(tank.TankSummary, tank.TankSummary),
+                    GUI.skin.label,
+                    GUILayout.Width(textWidth),
+                    GUILayout.Height(thumbnailSize));
+            }
+
+            if (!selected) return;
+            _selectedTank = tank;
+            _status = "Selected tanks: " + tank.TankSummary + ".";
+        }
+
+        private void DrawPartThumbnail(string partName, float size)
+        {
+            DrawPartThumbnail(partName, null, size);
+        }
+
+        private void DrawPartThumbnail(string partName, string partUrl, float size)
+        {
+            // Always reserve the rectangle during Layout and Repaint. The texture itself is
+            // generated lazily only during Repaint so thumbnail creation cannot change the
+            // IMGUI control tree between event passes.
+            Rect thumbnailRect = GUILayoutUtility.GetRect(
+                size, size,
+                GUILayout.Width(size),
+                GUILayout.Height(size));
+
+            if (Event.current == null || Event.current.type != EventType.Repaint) return;
+
+            Texture2D thumbnail = PartThumbnailCache.Get(partName, partUrl);
+            if (thumbnail != null)
+                GUI.DrawTexture(thumbnailRect, thumbnail, ScaleMode.ScaleToFit, true);
+
+            if (thumbnail == null || !thumbnailRect.Contains(Event.current.mousePosition)) return;
+
+            Texture2D preview = PartThumbnailCache.GetRotatingPreview(partName, partUrl);
+            if (preview == null) preview = thumbnail;
+            _hoverPartPreviewTexture = preview;
+
+            Vector2 topLeft = GUIUtility.GUIToScreenPoint(new Vector2(thumbnailRect.xMin, thumbnailRect.yMin));
+            Vector2 bottomRight = GUIUtility.GUIToScreenPoint(new Vector2(thumbnailRect.xMax, thumbnailRect.yMax));
+            _hoverPartPreviewSourceScreenRect = Rect.MinMaxRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+        }
+
+        private void DrawHoveredPartPreview()
+        {
+            if (_hoverPartPreviewTexture == null || Event.current == null || Event.current.type != EventType.Repaint) return;
+
+            Vector2 sourceTopLeft = GUIUtility.ScreenToGUIPoint(new Vector2(
+                _hoverPartPreviewSourceScreenRect.xMin, _hoverPartPreviewSourceScreenRect.yMin));
+            Vector2 sourceBottomRight = GUIUtility.ScreenToGUIPoint(new Vector2(
+                _hoverPartPreviewSourceScreenRect.xMax, _hoverPartPreviewSourceScreenRect.yMax));
+            Rect source = Rect.MinMaxRect(sourceTopLeft.x, sourceTopLeft.y, sourceBottomRight.x, sourceBottomRight.y);
+
+            const float margin = 8f;
+            const float frame = 4f;
+            float x = source.xMax + margin;
+            if (x + HoverPartPreviewSize + frame * 2f > _window.width - margin)
+                x = source.xMin - HoverPartPreviewSize - frame * 2f - margin;
+            x = Mathf.Clamp(x, margin + frame, Mathf.Max(margin + frame, _window.width - HoverPartPreviewSize - frame - margin));
+
+            float minY = 24f + margin + frame;
+            float maxY = Mathf.Max(minY, _window.height - HoverPartPreviewSize - frame - margin);
+            float y = Mathf.Clamp(source.center.y - HoverPartPreviewSize * 0.5f, minY, maxY);
+
+            Rect frameRect = new Rect(x - frame, y - frame, HoverPartPreviewSize + frame * 2f, HoverPartPreviewSize + frame * 2f);
+            GUI.Box(frameRect, GUIContent.none);
+            GUI.DrawTexture(new Rect(x, y, HoverPartPreviewSize, HoverPartPreviewSize),
+                _hoverPartPreviewTexture, ScaleMode.ScaleToFit, true);
         }
 
         private void TankSelectionCell(TankSuggestion tank, string text, float width)
         {
             if (!GUILayout.Button(text, GUI.skin.label, GUILayout.Width(width))) return;
             _selectedTank = tank;
-            _status = "Selected tank: " + tank.Tank.DisplayName + ".";
+            _status = "Selected tanks: " + tank.TankSummary + ".";
+        }
+
+        private bool TankMatchesTextFilter(TankSuggestion suggestion)
+        {
+            if (suggestion == null || suggestion.Tanks == null || suggestion.Tanks.Count == 0) return false;
+            string[] includeTerms = SplitFilterTerms(_tankNameFilter);
+            string[] excludeTerms = SplitFilterTerms(_tankExcludeFilter);
+
+            bool includeMatch = includeTerms.Length == 0 || suggestion.Tanks.Any(item =>
+                item != null && item.Tank != null && TextMatchesAnyFilterTerm(item.Tank.DisplayName, item.Tank.PartName, includeTerms));
+            if (!includeMatch) return false;
+
+            return !suggestion.Tanks.Any(item =>
+                item != null && item.Tank != null && TextMatchesAnyFilterTerm(item.Tank.DisplayName, item.Tank.PartName, excludeTerms));
         }
 
         private void SelectSolution(StageSolution s)
@@ -1721,6 +2047,23 @@ namespace VesselPlanner.UI
             get { return BodyName(SelectedBody); }
         }
 
+        // Selects an environment body by display/name without triggering an intermediate
+        // recalculation. Stage-By-Stage uses this immediately before its own Calculate call.
+        internal bool SetSelectedBodyByName(string bodyName)
+        {
+            if (string.IsNullOrWhiteSpace(bodyName)) return false;
+            if (_bodies.Count == 0) RefreshBodies();
+
+            int index = _bodies.FindIndex(b =>
+                string.Equals(BodyName(b), bodyName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(b == null ? string.Empty : b.name, bodyName, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) return false;
+
+            _selectedBodyIndex = index;
+            _altitudeMeters = Math.Min(_altitudeMeters, GetAtmosphereDepth(SelectedBody));
+            return true;
+        }
+
         // Used by the Stage-By-Stage New/Edit Stage dialog after Calculate.  The request
         // is serviced after StagePlan.Draw() has completed so the modal window has closed
         // before the main planner is raised.
@@ -1731,7 +2074,7 @@ namespace VesselPlanner.UI
 
         // Loads one planned stage's requirements into Planning mode and solves it, so the
         // candidate list is already populated when the user turns to this window.
-        internal void BeginPlannedStage(double targetDeltaV, DeltaVBasis basis, double minimumTwr, int maxEngines, double payloadTons, double cargoMassTons, double decouplerMassTons)
+        internal void BeginPlannedStage(double targetDeltaV, DeltaVBasis basis, double minimumTwr, int maxEngines, double payloadTons, double cargoMassTons, double decouplerMassTons, double assemblyMassTons, string bodyName)
         {
             _planningMode = true;
             _stageByStageMode = true;
@@ -1745,6 +2088,10 @@ namespace VesselPlanner.UI
             _payload = payloadTons.ToString("0.###", CultureInfo.InvariantCulture);
             _plannedStageCargoMassTons = Math.Max(0.0, cargoMassTons);
             _plannedStageDecouplerMassTons = Math.Max(0.0, decouplerMassTons);
+            _plannedStageAssemblyMassTons = Math.Max(0.0, assemblyMassTons);
+
+            if (!string.IsNullOrWhiteSpace(bodyName))
+                SetSelectedBodyByName(bodyName);
 
             Visible = true;
             Calculate();
@@ -1765,11 +2112,10 @@ namespace VesselPlanner.UI
             TankSuggestion tank = _selectedTank;
             bool captured = StagePlan.CaptureEngineAndTanks(
                 _selected.Engine.PartName,
+                _selected.Engine.PartUrl,
                 _selected.Engine.DisplayName,
                 Math.Max(1, _selected.EngineCount),
-                tank.Tank.PartName,
-                tank.Tank.DisplayName,
-                Math.Max(1, tank.Count));
+                tank.Tanks);
 
             if (!captured)
             {
@@ -1777,14 +2123,14 @@ namespace VesselPlanner.UI
                 return;
             }
 
-            _status = "Added the engine and " + tank.Tank.DisplayName + " to " + StagePlan.CapturingStageLabel + ".";
+            _status = "Added the engine and tank set " + tank.TankSummary + " to " + StagePlan.CapturingStageLabel + ".";
         }
 
         private void SpawnEngine(StageSolution s)
         {
             // While a stage is being built the part goes into the plan instead of onto the
             // editor cursor; the plan places its parts itself once it is finalised.
-            if (s != null && s.Engine != null && StagePlan.CapturePart(s.Engine.PartName, s.Engine.DisplayName, Math.Max(1, s.EngineCount), true))
+            if (s != null && s.Engine != null && StagePlan.CapturePart(s.Engine.PartName, s.Engine.PartUrl, s.Engine.DisplayName, Math.Max(1, s.EngineCount), true))
             {
                 _status = "Added " + s.EngineCount + " x " + s.Engine.DisplayName + " to " + StagePlan.CapturingStageLabel + ".";
                 return;
@@ -1807,15 +2153,30 @@ namespace VesselPlanner.UI
 
         private void SpawnTank(TankSuggestion t)
         {
-            if (t != null && t.Tank != null && StagePlan.CapturePart(t.Tank.PartName, t.Tank.DisplayName, Math.Max(1, t.Count), false))
+            if (t == null || t.Tanks == null || t.Tanks.Count == 0) return;
+
+            if (StagePlan.IsCapturing)
             {
-                _status = "Added " + Math.Max(1, t.Count) + " x " + t.Tank.DisplayName + " to " + StagePlan.CapturingStageLabel + ".";
-                return;
+                bool capturedAny = false;
+                foreach (TankSuggestionPart item in t.Tanks)
+                {
+                    if (item == null || item.Tank == null || item.Count <= 0) continue;
+                    capturedAny |= StagePlan.CapturePart(item.Tank.PartName, item.Tank.PartUrl, item.Tank.DisplayName, item.Count, false);
+                }
+                if (capturedAny)
+                {
+                    _status = "Added tank set " + t.TankSummary + " to " + StagePlan.CapturingStageLabel + ".";
+                    return;
+                }
             }
 
+            TankSuggestionPart first = t.Tanks.FirstOrDefault(item => item != null && item.Tank != null && item.Count > 0);
+            if (first == null) return;
             string message;
-            bool spawned = EditorPartSpawner.Spawn(t.Tank.PartName, out message);
-            _status = message;
+            bool spawned = EditorPartSpawner.Spawn(first.Tank.PartName, out message);
+            _status = t.DifferentTankTypes > 1
+                ? message + " Mixed set: place " + t.TankSummary + " as indicated."
+                : message;
 
             if (spawned && _planningMode && _uiSettings.ClosePlanningAfterAdd)
             {
@@ -1834,7 +2195,7 @@ namespace VesselPlanner.UI
 
             double twr;
             int max;
-            if (!D(_minTwr, out twr) || !int.TryParse(_maxEngines, out max))
+            if (!CommonRoutines.TryParseDouble(_minTwr, out twr) || !int.TryParse(_maxEngines, out max))
             { _status = "Check numeric inputs."; return; }
             if (_snapshot == null) RefreshStage();
             IEnumerable<EngineCandidate> candidates = _engines;
@@ -1865,7 +2226,7 @@ namespace VesselPlanner.UI
 
             double dv, twr, payload, ratio;
             int max;
-            if (!D(_targetDv, out dv) || !D(_minTwr, out twr) || !D(_payload, out payload) || !D(_tankRatio, out ratio) || !int.TryParse(_maxEngines, out max))
+            if (!CommonRoutines.TryParseDouble(_targetDv, out dv) || !CommonRoutines.TryParseDouble(_minTwr, out twr) || !CommonRoutines.TryParseDouble(_payload, out payload) || !CommonRoutines.TryParseDouble(_tankRatio, out ratio) || !int.TryParse(_maxEngines, out max))
             { _status = "Check numeric inputs."; return; }
 
             if (_snapshot == null) RefreshStage();
@@ -1874,7 +2235,7 @@ namespace VesselPlanner.UI
             var req = new StageRequirements
             {
                 PayloadDryMassTons = _useCraftPayload ? _snapshot.PayloadAboveStageMassTons : payload,
-                OtherStageDryMassTons = StagePlan.IsCapturing ? _plannedStageCargoMassTons + _plannedStageDecouplerMassTons : 0.0,
+                OtherStageDryMassTons = StagePlan.IsCapturing ? _plannedStageCargoMassTons + _plannedStageDecouplerMassTons + _plannedStageAssemblyMassTons : 0.0,
                 TargetDeltaV = dv,
                 TargetDeltaVBasis = _uiSettings.TargetDeltaVBasis,
                 MinimumTwr = twr,
@@ -1903,11 +2264,60 @@ namespace VesselPlanner.UI
 
         private IEnumerable<EngineCandidate> ApplyEngineNameFilter(IEnumerable<EngineCandidate> candidates)
         {
-            if (string.IsNullOrWhiteSpace(_engineNameFilter)) return candidates;
-            string filter = _engineNameFilter.Trim();
+            string[] includeTerms = SplitFilterTerms(_engineNameFilter);
+            string[] excludeTerms = SplitFilterTerms(_engineExcludeFilter);
+            if (includeTerms.Length == 0 && excludeTerms.Length == 0) return candidates;
+
             return candidates.Where(e =>
-                (e.DisplayName ?? string.Empty).IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                (e.PartName ?? string.Empty).IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0);
+                (includeTerms.Length == 0 || TextMatchesAnyFilterTerm(e.DisplayName, e.PartName, includeTerms)) &&
+                !TextMatchesAnyFilterTerm(e.DisplayName, e.PartName, excludeTerms));
+        }
+
+        private static string[] SplitFilterTerms(string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter)) return new string[0];
+            return filter.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(term => term.Trim())
+                .Where(term => term.Length > 0)
+                .ToArray();
+        }
+
+        private static bool TextMatchesAnyFilterTerm(string displayName, string partName, string[] terms)
+        {
+            if (terms == null || terms.Length == 0) return false;
+            string display = displayName ?? string.Empty;
+            string part = partName ?? string.Empty;
+            return terms.Any(term =>
+                display.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                part.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private void SaveEngineFilterIfEnabled()
+        {
+            if (!_uiSettings.SaveEngineFilter) return;
+            _uiSettings.EngineFilter = _engineNameFilter;
+            _uiSettings.Save();
+        }
+
+        private void SaveEngineExcludeFilterIfEnabled()
+        {
+            if (!_uiSettings.SaveEngineExcludeFilter) return;
+            _uiSettings.EngineExcludeFilter = _engineExcludeFilter;
+            _uiSettings.Save();
+        }
+
+        private void SaveTankFilterIfEnabled()
+        {
+            if (!_uiSettings.SaveTankFilter) return;
+            _uiSettings.TankFilter = _tankNameFilter;
+            _uiSettings.Save();
+        }
+
+        private void SaveTankExcludeFilterIfEnabled()
+        {
+            if (!_uiSettings.SaveTankExcludeFilter) return;
+            _uiSettings.TankExcludeFilter = _tankExcludeFilter;
+            _uiSettings.Save();
         }
 
         private void RecalculateForFilterChange()
@@ -1968,6 +2378,13 @@ namespace VesselPlanner.UI
             return string.Join(", ", tank.BulkheadProfiles.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray());
         }
 
+        private static string TankSuggestionBulkheadLabel(TankSuggestion suggestion)
+        {
+            if (suggestion == null) return "none";
+            if (!string.IsNullOrEmpty(suggestion.BulkheadProfile)) return suggestion.BulkheadProfile;
+            return TankBulkheadLabel(suggestion.PrimaryTank);
+        }
+
         private static string FormatNodeSizes(IEnumerable<int> sizes)
         {
             return string.Join(", ", sizes.OrderBy(x => x).Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
@@ -1982,18 +2399,21 @@ namespace VesselPlanner.UI
             using (new GUILayout.HorizontalScope())
             {
                 GUILayout.Label("Planet:", GUILayout.Width(70));
-                string bodyName = body != null ? BodyName(body) : "None";
-                if (GUILayout.Button(bodyName + " ▼", GUILayout.Width(PlanetButtonWidth), GUILayout.Height(PlanetButtonHeight)))
-                    _showPlanetDropdown = !_showPlanetDropdown;
+                int oldBodyIndex = _selectedBodyIndex;
+                string[] bodyEntries = _bodies.Select(BodyName).ToArray();
+                _selectedBodyIndex = ComboBox.Box(
+                    _planningMode ? PlanningBodyComboId : AnalysisBodyComboId,
+                    _selectedBodyIndex,
+                    bodyEntries,
+                    this,
+                    PlanetButtonWidth,
+                    false);
 
-                // Keep the anchor in the same local GUI coordinate system as the main planner
-                // window.  The dropdown is also drawn inside this window, so there is no
-                // ClickThroughBlocker/screen-space conversion involved.
-                if (Event.current.type == EventType.Repaint)
+                if (_selectedBodyIndex != oldBodyIndex)
                 {
-                    Rect bodyButtonRect = GUILayoutUtility.GetLastRect();
-                    _planetButtonWindowRect = new Rect(bodyButtonRect.x, bodyButtonRect.y, PlanetButtonWidth, PlanetButtonHeight);
-                    UpdatePlanetDropdownRect();
+                    body = SelectedBody;
+                    _altitudeMeters = Math.Min(_altitudeMeters, GetAtmosphereDepth(body));
+                    RecalculateForEnvironmentChange();
                 }
 
                 GUILayout.Space(12);
@@ -2027,67 +2447,6 @@ namespace VesselPlanner.UI
 
             if (body == null || !body.atmosphere)
                 GUILayout.Label("Selected body has no atmosphere; atmospheric Δv equals vacuum Δv.");
-        }
-
-        private void UpdatePlanetDropdownRect()
-        {
-            if (_bodies.Count == 0 || _planetButtonWindowRect.width <= 0f)
-            {
-                _planetDropdownWindowRect = new Rect();
-                return;
-            }
-
-            float contentHeight = PlanetButtonHeight * Math.Max(1, _bodies.Count);
-            float availableHeight = Mathf.Max(PlanetButtonHeight, _window.height - _planetButtonWindowRect.yMax - 8f);
-            float visibleHeight = Math.Min(Math.Min(PlanetDropdownMaxHeight, contentHeight), availableHeight);
-            bool needsVerticalScrollbar = contentHeight > visibleHeight;
-            float dropdownWidth = PlanetButtonWidth + (needsVerticalScrollbar ? PlanetDropdownScrollbarWidth : 0f);
-
-            _planetDropdownWindowRect = new Rect(
-                _planetButtonWindowRect.x,
-                _planetButtonWindowRect.yMax,
-                dropdownWidth,
-                visibleHeight);
-        }
-
-        private void DrawPlanetDropdownOverlay()
-        {
-            if (_bodies.Count == 0 || _planetButtonWindowRect.width <= 0f) return;
-
-            UpdatePlanetDropdownRect();
-            if (_planetDropdownWindowRect.width <= 0f || _planetDropdownWindowRect.height <= 0f) return;
-
-            // This overlay is drawn directly inside DrawWindow using planner-local GUI
-            // coordinates.  It therefore stays attached to the body button regardless of the
-            // planner's screen position, but still sits outside the GUILayout flow so the
-            // controls below it never move.
-#if false
-            DrawSolidEditorWindowBackground(_planetDropdownWindowRect);
-#endif
-            GUI.Box(_planetDropdownWindowRect, GUIContent.none);
-
-            float contentHeight = PlanetButtonHeight * Math.Max(1, _bodies.Count);
-            bool needsVerticalScrollbar = contentHeight > _planetDropdownWindowRect.height;
-            Rect scrollRect = _planetDropdownWindowRect;
-            Rect viewRect = new Rect(0f, 0f, PlanetButtonWidth, contentHeight);
-            _planetScroll = GUI.BeginScrollView(scrollRect, _planetScroll, viewRect, false, needsVerticalScrollbar);
-
-            for (int i = 0; i < _bodies.Count; i++)
-            {
-                CelestialBody candidate = _bodies[i];
-                Rect buttonRect = new Rect(0f, i * PlanetButtonHeight, PlanetButtonWidth, PlanetButtonHeight);
-                if (GUI.Button(buttonRect, BodyName(candidate)))
-                {
-                    _selectedBodyIndex = i;
-                    _altitudeMeters = Math.Min(_altitudeMeters, GetAtmosphereDepth(candidate));
-                    _showPlanetDropdown = false;
-                    RecalculateForEnvironmentChange();
-                    GUI.EndScrollView();
-                    return;
-                }
-            }
-
-            GUI.EndScrollView();
         }
 
         private void RefreshBodies()
@@ -2177,7 +2536,7 @@ namespace VesselPlanner.UI
 
         private void RecalculateForEnvironmentChange()
         {
-            if (_planningMode) Calculate(); else SimulateExisting();
+            RecalculateForFilterChange();
         }
 
         // The height the candidate engine list is measured against before either mode's
@@ -2741,12 +3100,11 @@ namespace VesselPlanner.UI
             Func<TankSuggestion, object> selector;
             switch (_tankSortColumn)
             {
-                case TankSortColumn.Tank: selector = t => t.Tank.DisplayName; break;
+                case TankSortColumn.Tank: selector = t => t.TankSummary; break;
                 case TankSortColumn.Count: selector = t => t.Count; break;
                 case TankSortColumn.DryMass: selector = t => t.TotalDryMassTons; break;
-                case TankSortColumn.CostEfficiency: selector = t => t.CostEfficiency; break;
                 case TankSortColumn.Excess: selector = t => t.ExcessFraction; break;
-                case TankSortColumn.Bulkhead: selector = t => TankBulkheadLabel(t.Tank); break;
+                case TankSortColumn.Bulkhead: selector = t => TankSuggestionBulkheadLabel(t); break;
                 case TankSortColumn.Capacity: selector = t => t.CapacitySummary ?? string.Empty; break;
                 default: return;
             }
@@ -2788,22 +3146,19 @@ namespace VesselPlanner.UI
             }
         }
         private static void Header(string s, float w) { GUILayout.Label(s, GUILayout.Width(w)); }
-        private static bool D(string s, out double v) { return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v); }
         private static string F(double v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
         private static string ModeLabel(OptimizationMode mode) { return mode.ToString().Replace("Lowest", "Lowest ").Replace("Highest", "Highest ").Replace("Shortest", "Shortest "); }
         private void ClampWindow()
         {
             _window.width = Mathf.Clamp(_window.width, MinWindowWidth, MaxWindowWidth);
             _window.height = Mathf.Max(MinWindowHeight, _window.height);
-            _window.x = Mathf.Clamp(_window.x, -_window.width + 40f, Screen.width - 40f);
-            _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 30f);
+            CommonRoutines.ClampWindow(ref _window);
         }
 
         private void ClampSettingsWindow()
         {
             if (!_settingsVisible) return;
-            _settingsWindow.x = Mathf.Clamp(_settingsWindow.x, -_settingsWindow.width + 40f, Screen.width - 40f);
-            _settingsWindow.y = Mathf.Clamp(_settingsWindow.y, 0f, Screen.height - 30f);
+            CommonRoutines.ClampWindow(ref _settingsWindow);
         }
     }
 }

@@ -49,10 +49,16 @@
       <DependentUpon>AssemblyVersion.tt</DependentUpon>
     </Compile>
     <Compile Include="Core\TankModels.cs" />
+    <Compile Include="Core\MissionPlannerModels.cs" />
+    <Compile Include="Core\CommonRoutines.cs" />
+    <Compile Include="Core\MissionPlan.cs" />
+    <Compile Include="Core\DeltaVTable.cs" />
+    <Compile Include="Core\PlanetPackHeuristics.cs" />
     <Compile Include="Core\StagePlan.cs" />
     <Compile Include="Core\BulkheadProfiles.cs" />
     <Compile Include="Core\DecouplerMasses.cs" />
     <Compile Include="Core\TankPlanner.cs" />
+    <Compile Include="Core\PartIconRenderer.cs" />
     <Compile Include="VesselPlannerFlightAddon.cs" />
     <Compile Include="InstallChecker.cs" />
     <Compile Include="KSP\EditorPartSpawner.cs" />
@@ -65,8 +71,12 @@
     <Compile Include="KSP\EngineDatabase.cs" />
     <Compile Include="KSP\EditorStageScanner.cs" />
     <Compile Include="KSP\KspResourceVolume.cs" />
+    <Compile Include="KSP\PartThumbnailCache.cs" />
+    <Compile Include="KSP\SavedAssemblyCatalog.cs" />
     <Compile Include="ToolbarRegistration.cs" />
     <Compile Include="UI\WindowSkin.cs" />
+    <Compile Include="UI\ComboBox.cs" />
+    <Compile Include="UI\MissionPlannerPage.cs" />
     <Compile Include="UI\StagePlanWindow.cs" />
     <Compile Include="UI\PlannerWindow.cs" />
     <Compile Include="UI\FlightGraphWindow.cs" />
@@ -76,10 +86,14 @@
   <ItemGroup>
     <Content Include="PluginData\Textures\icon_38.png" />
     <Content Include="PluginData\Textures\icon_24.png" />
+    <Content Include="..\GameData\VesselPlanner\PluginData\DeltaVTables\*.csv" />
     <Content Include="AssemblyVersion.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>AssemblyVersion.cs</LastGenOutput>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <DeltaVTableFile Include="$(SolutionDir)GameData\VesselPlanner\PluginData\DeltaVTables\*.csv" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
@@ -90,6 +104,8 @@
     <MakeDir Directories="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\Textures" />
     <Copy SourceFiles="$(ProjectDir)PluginData\Textures\icon_38.png;$(ProjectDir)PluginData\Textures\icon_24.png" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\Textures" />
     <Copy SourceFiles="$(SolutionDir)VesselPlanner.version" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner" />
+    <MakeDir Directories="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\DeltaVTables" />
+    <Copy SourceFiles="@(DeltaVTableFile)" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\DeltaVTables" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(SolutionDir)GameData\VesselPlanner\BulkheadProfiles.cfg;$(SolutionDir)GameData\VesselPlanner\decouplerMasses.cfg" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

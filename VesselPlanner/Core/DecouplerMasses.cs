@@ -107,13 +107,13 @@ namespace VesselPlanner.Core
         private static void ReadEntry(ConfigNode node)
         {
             if (node == null) return;
-            string profile = ReadString(node, "profile", ReadString(node, "size", ""));
+            string profile = CommonRoutines.ReadString(node, "profile", CommonRoutines.ReadString(node, "size", ""));
             if (string.IsNullOrEmpty(profile)) return;
             profile = profile.Trim();
 
-            double decoupler = ReadDouble(node, "decoupler", 0.0);
-            double separator = ReadDouble(node, "stackSeparator", 0.0);
-            string source = ReadString(node, "source", "");
+            double decoupler = CommonRoutines.ReadDouble(node, "decoupler", 0.0);
+            double separator = CommonRoutines.ReadDouble(node, "stackSeparator", 0.0);
+            string source = CommonRoutines.ReadString(node, "source", "");
 
             for (int i = 0; i < _entries.Count; i++)
             {
@@ -131,20 +131,6 @@ namespace VesselPlanner.Core
                 StackSeparatorMassTons = Math.Max(0.0, separator),
                 Source = source
             });
-        }
-
-        private static string ReadString(ConfigNode node, string key, string defaultValue)
-        {
-            return node != null && node.HasValue(key) ? node.GetValue(key) : defaultValue;
-        }
-
-        private static double ReadDouble(ConfigNode node, string key, double defaultValue)
-        {
-            if (node == null || !node.HasValue(key)) return defaultValue;
-            double value;
-            return double.TryParse(node.GetValue(key), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
-                ? value
-                : defaultValue;
         }
 
         private static void AddFallbackEntries()
