@@ -16,7 +16,7 @@ namespace VesselPlanner.UI
     public sealed class PlannerWindow
     {
         private Rect _window = new Rect(100, 70, 1150, 800);
-        private Rect _settingsWindow = new Rect(180, 120, 600, 680);
+        private Rect _settingsWindow = new Rect(180, 120, SettingsWindowWidth, SettingsWindowBaseHeight);
         private bool _settingsVisible;
         private bool _bringMainToFrontRequested;
         private int _settingsTab;
@@ -24,6 +24,7 @@ namespace VesselPlanner.UI
         private readonly PlannerUiSettings _uiSettings = new PlannerUiSettings();
         private StagePlanWindow _stagePlan;
         private readonly MissionPlannerPage _missionPlanner = new MissionPlannerPage();
+        private readonly DeltaVTablePage _deltaVTablePage = new DeltaVTablePage();
         private Vector2 _resultsScroll;
         private Vector2 _detailScroll;
         private Vector2 _tankScroll;
@@ -33,6 +34,7 @@ namespace VesselPlanner.UI
         private bool _planningMode = true;
         private bool _stageByStageMode;
         private bool _missionPlannerMode;
+        private bool _deltaVTableMode;
         private bool _simulateOnAnalyzeEntry;
         private int _stage;
         private string _stageText = "0";
@@ -61,6 +63,10 @@ namespace VesselPlanner.UI
         private const int PlanningBodyComboId = 41007;
         private const int AnalysisBodyComboId = 41008;
         private const int RotatingImageBackgroundComboId = 41010;
+        private const float SettingsWindowWidth = 640f;
+        private const float SettingsWindowBaseHeight = 720f;
+        private const float SettingsWindowButtonExtraHeight = 28f;
+        private const int KspSkinExtraSettingsLines = 6;
         private static readonly FieldInfo StageGroupDragHandlerField = typeof(StageGroup).GetField("dragHandler", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private string _engineNameFilter = "";
         private string _engineExcludeFilter = "";
@@ -231,6 +237,7 @@ namespace VesselPlanner.UI
             private bool _closePlanningAfterAdd;
             private bool _solidEditorWindowBackgrounds = true;
             private bool _useAltSkin;
+            private bool _showTooltips = true;
             private DeltaVBasis _targetDeltaVBasis = DeltaVBasis.Vacuum;
             private string _csvExportDirectory = "VesselPlanner/PluginData/CSV";
             private string _pngExportDirectory = "Screenshots";
@@ -320,6 +327,12 @@ namespace VesselPlanner.UI
             {
                 get { return _solidEditorWindowBackgrounds; }
                 set { _solidEditorWindowBackgrounds = value; }
+            }
+
+            public bool ShowTooltips
+            {
+                get { return _showTooltips; }
+                set { _showTooltips = value; }
             }
 
             // Pixels the Planning grip above the detail panes has been dragged below the
@@ -478,6 +491,7 @@ namespace VesselPlanner.UI
                     _closeAnalyzeExistingAfterAdd = CommonRoutines.ReadBool(settings, "CloseAnalyzeExistingAfterAdd", _closeAnalyzeExistingAfterAdd);
                     _closePlanningAfterAdd = CommonRoutines.ReadBool(settings, "ClosePlanningAfterAdd", _closePlanningAfterAdd);
                     _solidEditorWindowBackgrounds = CommonRoutines.ReadBool(settings, "SolidEditorWindowBackgrounds", _solidEditorWindowBackgrounds);
+                    _showTooltips = CommonRoutines.ReadBool(settings, "ShowTooltips", _showTooltips);
                     UseAltSkin = CommonRoutines.ReadBool(settings, WindowSkin.SettingsKey, _useAltSkin);
                     if (settings.HasValue("TargetDeltaVBasis"))
                     {
@@ -555,6 +569,7 @@ namespace VesselPlanner.UI
                     settings.SetValue("CloseAnalyzeExistingAfterAdd", CloseAnalyzeExistingAfterAdd, true);
                     settings.SetValue("ClosePlanningAfterAdd", ClosePlanningAfterAdd, true);
                     settings.SetValue("SolidEditorWindowBackgrounds", SolidEditorWindowBackgrounds, true);
+                    settings.SetValue("ShowTooltips", ShowTooltips, true);
                     settings.SetValue(WindowSkin.SettingsKey, UseAltSkin, true);
                     settings.SetValue("TargetDeltaVBasis", _targetDeltaVBasis.ToString(), true);
                     settings.SetValue("CsvExportDirectory", _csvExportDirectory, true);
@@ -620,7 +635,9 @@ namespace VesselPlanner.UI
             _window.width = Mathf.Clamp(_uiSettings.MainWindowWidth, MinWindowWidth, MaxWindowWidth);
             RefreshBodies();
             RefreshDatabases();
+            _missionPlanner.TooltipsEnabled = _uiSettings.ShowTooltips;
             _missionPlanner.Initialize();
+            _deltaVTablePage.Initialize();
             _stage = Math.Min(EditorStageScanner.MaxStage, Math.Max(0, _stage));
             _stageText = _stage.ToString(CultureInfo.InvariantCulture);
             RefreshStage();
@@ -649,8 +666,14 @@ namespace VesselPlanner.UI
                 _window = ClickThruBlocker.GUILayoutWindow(19041968, _window, DrawWindow, "VesselPlanner", ToolbarRegistration.winDarker, GUILayout.Width(_window.width), GUILayout.MinHeight(MinWindowHeight));
                 if (_settingsVisible)
                 {
+                    // The KSP skin uses taller controls than the alternate Unity skin.
+                    // Give it four additional label-line heights so the same settings fit
+                    // without making the alternate-skin window unnecessarily tall.
+                    float settingsHeight = GetSettingsWindowHeight();
+                    _settingsWindow.width = SettingsWindowWidth;
+                    _settingsWindow.height = settingsHeight;
                     //DrawSolidEditorWindowBackground(_settingsWindow);
-                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", ToolbarRegistration.winDarker, GUILayout.Width(600), GUILayout.Height(680));
+                    _settingsWindow = ClickThruBlocker.GUILayoutWindow(19041969, _settingsWindow, DrawSettingsWindow, "VesselPlanner Settings", ToolbarRegistration.winDarker, GUILayout.Width(SettingsWindowWidth), GUILayout.Height(settingsHeight));
                 }
                 else
                 {
@@ -666,6 +689,7 @@ namespace VesselPlanner.UI
                 ClampSettingsWindow();
             }
 
+            _missionPlanner.TooltipsEnabled = _uiSettings.ShowTooltips;
             if (Visible) _missionPlanner.DrawEntryWindow();
             StagePlan.Draw();
 
@@ -695,8 +719,8 @@ namespace VesselPlanner.UI
                 // brought back into line before the buttons are drawn.
                 if (!StagePlan.Visible) _stageByStageMode = false;
 
-                bool analyzeSelected = !_missionPlannerMode && !_planningMode && !_stageByStageMode;
-                bool planningSelected = !_missionPlannerMode && _planningMode && !_stageByStageMode;
+                bool analyzeSelected = !_missionPlannerMode && !_deltaVTableMode && !_planningMode && !_stageByStageMode;
+                bool planningSelected = !_missionPlannerMode && !_deltaVTableMode && _planningMode && !_stageByStageMode;
 
                 bool missionSelected = GUILayout.Toggle(_missionPlannerMode, "Mission Planner", "Button", GUILayout.Height(25));
                 if (missionSelected && !_missionPlannerMode)
@@ -704,6 +728,7 @@ namespace VesselPlanner.UI
                     ComboBox.Close(PlanningBodyComboId);
                     ComboBox.Close(AnalysisBodyComboId);
                     _missionPlannerMode = true;
+                    _deltaVTableMode = false;
                     LeaveStageByStage();
                     CancelStagePartPick(null);
                 }
@@ -719,6 +744,7 @@ namespace VesselPlanner.UI
                     ComboBox.Close(PlanningBodyComboId);
                     ComboBox.Close(AnalysisBodyComboId);
                     _missionPlannerMode = false;
+                    _deltaVTableMode = false;
                     _stageByStageMode = true;
                     _planningMode = true;
                     StagePlan.PrepareForStageByStageStart();
@@ -734,6 +760,7 @@ namespace VesselPlanner.UI
                     ComboBox.Close(PlanningBodyComboId);
                     ComboBox.Close(AnalysisBodyComboId);
                     _missionPlannerMode = false;
+                    _deltaVTableMode = false;
                     _planningMode = false;
                     _simulateOnAnalyzeEntry = true;
                     LeaveStageByStage();
@@ -744,15 +771,30 @@ namespace VesselPlanner.UI
                     ComboBox.Close(PlanningBodyComboId);
                     ComboBox.Close(AnalysisBodyComboId);
                     _missionPlannerMode = false;
+                    _deltaVTableMode = false;
                     _planningMode = true;
                     LeaveStageByStage();
+                }
+
+                GUILayout.Space(18f);
+
+                bool deltaVTableSelected = GUILayout.Toggle(_deltaVTableMode, "Delta-V Table", "Button", GUILayout.Height(25));
+                if (deltaVTableSelected && !_deltaVTableMode)
+                {
+                    _missionPlanner.CloseEntry();
+                    ComboBox.Close(PlanningBodyComboId);
+                    ComboBox.Close(AnalysisBodyComboId);
+                    _missionPlannerMode = false;
+                    _deltaVTableMode = true;
+                    LeaveStageByStage();
+                    CancelStagePartPick(null);
                 }
 
                 // Planning may intentionally target stages beyond the craft that currently exists,
                 // but Analyze Existing can only inspect real vessel stages.  Enforce the current
                 // vessel maximum every frame so a staging edit which lowers the maximum also brings
                 // an already-selected stage back into range.
-                if (!_missionPlannerMode && !_planningMode && _stage > EditorStageScanner.MaxStage)
+                if (!_missionPlannerMode && !_deltaVTableMode && !_planningMode && _stage > EditorStageScanner.MaxStage)
                     SetStage(EditorStageScanner.MaxStage);
 
                 GUILayout.FlexibleSpace();
@@ -762,6 +804,7 @@ namespace VesselPlanner.UI
                 {
                     RefreshDatabases();
                     RefreshStage();
+                    if (_deltaVTableMode) DeltaVTable.Reload();
                     RecalculateForFilterChange();
                 }
                 if (GUILayout.Button("×", GUILayout.Width(30)))
@@ -776,6 +819,11 @@ namespace VesselPlanner.UI
             {
                 GUILayout.Space(4);
                 _missionPlanner.DrawPage();
+            }
+            else if (_deltaVTableMode)
+            {
+                GUILayout.Space(4);
+                _deltaVTablePage.DrawPage();
             }
             else
             {
@@ -867,7 +915,7 @@ namespace VesselPlanner.UI
                 return;
             }
 
-            if (_missionPlannerMode) return;
+            if (_missionPlannerMode || _deltaVTableMode) return;
 
             if (!_pickStageFromPart)
             {
@@ -1666,7 +1714,7 @@ namespace VesselPlanner.UI
             }
             else if (_settingsTab == 2)
             {
-                GUILayout.Label("Planning mode behavior.");
+                SettingsSectionHeader("Planning mode behavior");
                 GUILayout.Space(8);
                 GUILayout.Label("Add behavior");
                 bool oldCloseAfterAdd = _uiSettings.ClosePlanningAfterAdd;
@@ -1680,7 +1728,7 @@ namespace VesselPlanner.UI
             }
             else if (_settingsTab == 3)
             {
-                GUILayout.Label("Filter persistence");
+                SettingsSectionHeader("Filter persistence");
                 GUILayout.Label("Filter text is applied immediately. Enable these options to also save the include and exclusion text automatically for the next KSP session.");
                 GUILayout.Space(8);
 
@@ -1728,7 +1776,7 @@ namespace VesselPlanner.UI
             }
             else
             {
-                GUILayout.Label("Editor window appearance.");
+                SettingsSectionHeader("Editor window appearance");
                 GUILayout.Space(8);
                 GUILayout.Label("Window skin");
                 bool oldAltSkin = _uiSettings.UseAltSkin;
@@ -1758,30 +1806,45 @@ namespace VesselPlanner.UI
                 GUILayout.Label("Applies to the main VesselPlanner, its Settings window, and all Stage-By-Stage editor windows. Flight windows are unchanged.");
                 GUILayout.Label("Main window width: drag the grip on the right edge to resize from 1150 to 1850 px. The selected width is remembered.");
 
+                GUILayout.Space(8);
+                bool oldShowTooltips = _uiSettings.ShowTooltips;
+                bool newShowTooltips = GUILayout.Toggle(oldShowTooltips, "Show tooltips");
+                if (newShowTooltips != oldShowTooltips)
+                {
+                    _uiSettings.ShowTooltips = newShowTooltips;
+                    _missionPlanner.TooltipsEnabled = newShowTooltips;
+                    changed = true;
+                }
+                GUILayout.Label("Controls VesselPlanner hover help, including Part Images settings and Mission Planner button tooltips.");
+
                 GUILayout.Space(12);
-                GUILayout.Label("Part images");
+                SettingsSectionHeader("Part images");
                 GUILayout.Label("Changes apply immediately to newly rendered list icons and rotating hover previews.");
 
                 float numericValue;
-                if (SettingsFloatField("ZoomFactor for icons", ref _iconZoomFactorText, _uiSettings.IconZoomFactor, 0.1f, 5f, out numericValue))
+                if (SettingsFloatField("ZoomFactor for icons", ref _iconZoomFactorText, _uiSettings.IconZoomFactor, 0.1f, 5f,
+                    "Controls the camera zoom used for static list icons. Lower values make the part image larger; higher values make it smaller.", out numericValue))
                 {
                     _uiSettings.IconZoomFactor = numericValue;
                     changed = true;
                     partImageSettingsChanged = true;
                 }
-                if (SettingsFloatField("ZoomFactor for Rotating Images", ref _rotatingImageZoomFactorText, _uiSettings.RotatingImageZoomFactor, 0.1f, 5f, out numericValue))
+                if (SettingsFloatField("ZoomFactor for Rotating Images", ref _rotatingImageZoomFactorText, _uiSettings.RotatingImageZoomFactor, 0.1f, 5f,
+                    "Controls the camera zoom used for the enlarged rotating hover preview. Lower values make the part image larger; higher values make it smaller.", out numericValue))
                 {
                     _uiSettings.RotatingImageZoomFactor = numericValue;
                     changed = true;
                     partImageSettingsChanged = true;
                 }
-                if (SettingsFloatField("Camera Yaw Degrees", ref _cameraYawDegreesText, _uiSettings.CameraYawDegrees, 0f, 180f, out numericValue))
+                if (SettingsFloatField("Camera Yaw Degrees", ref _cameraYawDegreesText, _uiSettings.CameraYawDegrees, 0f, 180f,
+                    "Sets the horizontal camera viewing angle around the part, from 0 to 180 degrees.", out numericValue))
                 {
                     _uiSettings.CameraYawDegrees = numericValue;
                     changed = true;
                     partImageSettingsChanged = true;
                 }
-                if (SettingsFloatField("Camera Pitch Degrees", ref _cameraPitchDegreesText, _uiSettings.CameraPitchDegrees, 0f, 90f, out numericValue))
+                if (SettingsFloatField("Camera Pitch Degrees", ref _cameraPitchDegreesText, _uiSettings.CameraPitchDegrees, 0f, 90f,
+                    "Sets the vertical camera viewing angle for the part, from 0 to 90 degrees.", out numericValue))
                 {
                     _uiSettings.CameraPitchDegrees = numericValue;
                     changed = true;
@@ -1789,13 +1852,15 @@ namespace VesselPlanner.UI
                 }
 
                 int integerValue;
-                if (SettingsIntField("RotatingPreviewSize", ref _rotatingPreviewSizeText, _uiSettings.RotatingPreviewSize, 32, 256, out integerValue))
+                if (SettingsIntField("RotatingPreviewSize", ref _rotatingPreviewSizeText, _uiSettings.RotatingPreviewSize, 32, 256,
+                    "Sets the pixel resolution of each rotating preview frame. Higher values are sharper but use more memory and take longer to render.", out integerValue))
                 {
                     _uiSettings.RotatingPreviewSize = integerValue;
                     changed = true;
                     partImageSettingsChanged = true;
                 }
-                if (SettingsIntField("Degrees per frame", ref _rotatingPreviewDegreesPerFrameText, _uiSettings.RotatingPreviewDegreesPerFrame, 1, 180, out integerValue))
+                if (SettingsIntField("Degrees per frame", ref _rotatingPreviewDegreesPerFrameText, _uiSettings.RotatingPreviewDegreesPerFrame, 1, 180,
+                    "Controls how quickly the rotating preview advances through its pre-rendered orientations. Higher values rotate the displayed part faster.", out integerValue))
                 {
                     _uiSettings.RotatingPreviewDegreesPerFrame = integerValue;
                     changed = true;
@@ -1842,7 +1907,7 @@ namespace VesselPlanner.UI
                 }
 
                 GUILayout.Space(10);
-                GUILayout.Label("Detail pane sizes");
+                SettingsSectionHeader("Detail pane sizes");
                 GUILayout.Label("In Planning, drag the grip between Selected Engine and Tanks to change the pane widths, and the grip above them to give the engine list more room. In Analyze Existing, drag the grip above Selected Engine to trade height between the candidate engine list and the pane below it. All are remembered between sessions.");
                 GUILayout.Space(4);
                 if (GUILayout.Button("Reset pane sizes", GUILayout.Width(160)))
@@ -1855,12 +1920,22 @@ namespace VesselPlanner.UI
             }
             GUILayout.EndScrollView();
 
+            CommonRoutines.DrawTooltip(_uiSettings.ShowTooltips, _settingsWindow.width, _settingsWindow.height);
             if (partImageSettingsChanged) ApplyPartImageSettings();
             if (changed) _uiSettings.Save();
             // Allow the Settings window to be dragged from any unused/background
             // area instead of limiting dragging to the title strip. Controls still
             // receive their normal clicks before DragWindow sees the event.
             GUI.DragWindow(new Rect(0f, 0f, _settingsWindow.width, _settingsWindow.height));
+        }
+
+        private static void SettingsSectionHeader(string text)
+        {
+            GUIStyle style = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold
+            };
+            GUILayout.Label(text, style);
         }
 
         private void SyncPartImageSettingText()
@@ -1885,7 +1960,13 @@ namespace VesselPlanner.UI
                 _uiSettings.RotatingPreviewDegreesPerFrame);
         }
 
-        private static bool SettingsFloatField(string label, ref string text, float currentValue, float minValue, float maxValue, out float newValue)
+        private void RegisterSettingsTooltip(Rect controlRect, string tooltip)
+        {
+            if (!_uiSettings.ShowTooltips || string.IsNullOrEmpty(tooltip)) return;
+            GUI.Label(controlRect, new GUIContent(string.Empty, tooltip), GUIStyle.none);
+        }
+
+        private bool SettingsFloatField(string label, ref string text, float currentValue, float minValue, float maxValue, string tooltip, out float newValue)
         {
             newValue = currentValue;
             float sliderValue;
@@ -1893,11 +1974,15 @@ namespace VesselPlanner.UI
             {
                 GUILayout.Label(label, GUILayout.Width(220));
                 string edited = GUILayout.TextField(text ?? string.Empty, GUILayout.Width(70));
+                Rect textFieldRect = GUILayoutUtility.GetLastRect();
+                RegisterSettingsTooltip(textFieldRect, tooltip);
                 if (!string.Equals(edited, text, StringComparison.Ordinal)) text = edited;
                 using (new GUILayout.VerticalScope(GUILayout.Width(180)))
                 {
                     GUILayout.Space(5);
                     sliderValue = GUILayout.HorizontalSlider(currentValue, minValue, maxValue, GUILayout.Width(180));
+                    Rect sliderRect = GUILayoutUtility.GetLastRect();
+                    RegisterSettingsTooltip(sliderRect, tooltip);
                 }
                 GUILayout.Label(minValue.ToString("0.###", CultureInfo.InvariantCulture) + " - " + maxValue.ToString("0.###", CultureInfo.InvariantCulture), GUILayout.Width(85));
             }
@@ -1925,7 +2010,7 @@ namespace VesselPlanner.UI
             return true;
         }
 
-        private static bool SettingsIntField(string label, ref string text, int currentValue, int minValue, int maxValue, out int newValue)
+        private bool SettingsIntField(string label, ref string text, int currentValue, int minValue, int maxValue, string tooltip, out int newValue)
         {
             newValue = currentValue;
             float sliderValue;
@@ -1933,11 +2018,15 @@ namespace VesselPlanner.UI
             {
                 GUILayout.Label(label, GUILayout.Width(220));
                 string edited = GUILayout.TextField(text ?? string.Empty, GUILayout.Width(70));
+                Rect textFieldRect = GUILayoutUtility.GetLastRect();
+                RegisterSettingsTooltip(textFieldRect, tooltip);
                 if (!string.Equals(edited, text, StringComparison.Ordinal)) text = edited;
                 using (new GUILayout.VerticalScope(GUILayout.Width(180)))
                 {
                     GUILayout.Space(5);
                     sliderValue = GUILayout.HorizontalSlider(currentValue, minValue, maxValue, GUILayout.Width(180));
+                    Rect sliderRect = GUILayoutUtility.GetLastRect();
+                    RegisterSettingsTooltip(sliderRect, tooltip);
                 }
                 GUILayout.Label(minValue.ToString(CultureInfo.InvariantCulture) + " - " + maxValue.ToString(CultureInfo.InvariantCulture), GUILayout.Width(85));
             }
@@ -3392,7 +3481,7 @@ namespace VesselPlanner.UI
         private bool OptimizationToggle(OptimizationMode mode)
         {
             bool active = _mode == mode;
-            bool requested = GUILayout.Toggle(active, ModeLabel(mode));
+            bool requested = GUILayout.Toggle(active, CommonRoutines.AddSpacesToString(mode.ToString()));
             if (requested && !active)
             {
                 _mode = mode;
@@ -3415,12 +3504,25 @@ namespace VesselPlanner.UI
         }
         private static void Header(string s, float w) { GUILayout.Label(s, GUILayout.Width(w)); }
         private static string F(double v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
-        private static string ModeLabel(OptimizationMode mode) { return mode.ToString().Replace("Lowest", "Lowest ").Replace("Highest", "Highest ").Replace("Shortest", "Shortest "); }
         private void ClampWindow()
         {
             _window.width = Mathf.Clamp(_window.width, MinWindowWidth, MaxWindowWidth);
             _window.height = Mathf.Max(MinWindowHeight, _window.height);
             CommonRoutines.ClampWindow(ref _window);
+        }
+
+        private float GetSettingsWindowHeight()
+        {
+            float height = SettingsWindowBaseHeight + SettingsWindowButtonExtraHeight;
+            if (_uiSettings.UseAltSkin) return height;
+
+            float lineHeight = 22f;
+            if (GUI.skin != null && GUI.skin.label != null)
+            {
+                Vector2 size = GUI.skin.label.CalcSize(new GUIContent("Ag"));
+                if (size.y > 0f) lineHeight = size.y;
+            }
+            return height + KspSkinExtraSettingsLines * lineHeight;
         }
 
         private void ClampSettingsWindow()

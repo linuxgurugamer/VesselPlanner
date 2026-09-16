@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -38,6 +38,13 @@ namespace VesselPlanner.Core
         public static string LoadedTable { get { return loadedDeltaVTable; } }
         public static bool IsLoaded { get { return deltaVloaded && DeltaVDict.Count > 0; } }
         public static int Count { get { return DeltaVDict.Count; } }
+
+        // Returns a snapshot so UI pages can inspect the active table without exposing
+        // the mutable backing list used by the loader.
+        public static DeltaV[] GetRows()
+        {
+            return DeltaVDict.ToArray();
+        }
 
         public static PlanetPackInfo DetectPlanetPack()
         {

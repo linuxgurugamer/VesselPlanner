@@ -1,9 +1,9 @@
-{
+﻿{
   "NAME": "VesselPlanner",
   "VERSION": {
     "MAJOR": 0,
     "MINOR": 7,
-    "PATCH": 53,
+    "PATCH": 75,
     "BUILD": 0
   },
   "KSP_VERSION_MIN": {
@@ -14,6 +14,6 @@
   "KSP_VERSION_MAX": {
     "MAJOR": 1,
     "MINOR": 12,
-    "PATCH": 609
+    "PATCH": 619
   }
 }

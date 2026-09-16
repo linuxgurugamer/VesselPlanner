@@ -1,10 +1,60 @@
-# VesselPlanner for KSP1
+﻿# VesselPlanner for KSP1
 
 VesselPlanner is a planning and telemetry mod for **Kerbal Space Program 1.12.x**. It helps you analyze an existing stage, design a future stage, build a vessel one stage at a time, and record flight telemetry.
 
 A Word version of this instruction manual is included at `Manual/VesselPlanner-Manual.docx`. Screenshot locations are marked with descriptive image-placeholder tags.
 
-A detailed Stage-By-Stage walkthrough is included at `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`.
+Detailed walkthroughs are included at:
+
+- `Manual/VesselPlanner-Analyze-Existing-Tutorial.docx`
+- `Manual/VesselPlanner-Planning-Tutorial.docx`
+- `Manual/VesselPlanner-Mission-Planner-Tutorial.docx`
+- `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx`
+
+
+### 0.7.75 Analyze Existing and Planning tutorials
+
+Added dedicated tutorials for the Analyze Existing and Planning pages. They cover stage selection, simulation and sizing behavior, environment and candidate filters, result interpretation, optimization goals, tank-set selection, part placement, current layouts, examples, and troubleshooting.
+
+### 0.7.74 Mission Planner and Stage-by-Stage tutorials
+
+Added a dedicated Mission Planner tutorial and refreshed the Stage-by-Stage tutorial for the current 0.7.74 workflows, including mission-linked stages, subassemblies, automatic/clipboard delta-v handling, current engine/tank lists, and finalization.
+
+### 0.7.73 manual table of contents
+
+Added a one-page Table of Contents to `Manual/VesselPlanner-Manual.docx`, listing the manual's major sections with page numbers.
+
+### 0.7.72 manual refresh
+
+The main user manual has been rewritten to describe the current VesselPlanner feature set through 0.7.71, including the selectable Planning delta-v basis, current part-image controls, Mission/Stage-By-Stage workflows, Delta-V Table, and current Flight Data layout/settings.
+
+### 0.7.71 Delta-V Table button position
+
+Moved the **Delta-V Table** mode button to immediately right of **Planning**, with a visible gap between the two controls.
+
+### 0.7.70 Delta-V Table value columns
+
+The Delta-V Table now uses dedicated fixed columns for **Ejection, Capture, Plane Change, Total, Landing, and Ascent**. Values are displayed directly as clickable labels instead of buttons; clicking any displayed value copies its numeric delta-v to the clipboard. The Selected Value column was removed, and moon indentation is confined to the Body column so all metric columns align exactly.
+
+### 0.7.69 Delta-V Table alignment and status line
+
+Delta-V Table clipboard confirmations now appear in a fixed status line at the bottom of the page. The table uses fixed-width column groups so planet, moon, and home-body rows line up consistently. The **dV to low orbit** value is also clickable and copies its numeric value to the clipboard.
+
+### 0.7.68 Delta-V Table clipboard copy
+
+Clicking a Delta-V Table value button now shows the value, copies the numeric delta-v directly to the system clipboard, and displays a confirmation message on the page.
+
+### 0.7.67 Delta-V Table display cleanup
+
+The **Delta-V Table** no longer shows a Transfer button. Route/surface buttons are hidden when their value is zero or unavailable, and expandable body names use label styling while remaining clickable.
+
+### 0.7.66 Delta-V Table page
+
+Added a **Delta-V Table** editor page that shows the active planet-pack CSV as an expandable planet/moon tree. Every body shows dV to low orbit; route buttons reveal Ejection, Transfer, Capture, Plane Change, and Total values, and surface-capable bodies also expose Landing and Ascent.
+
+### 0.7.65 bundled OPM delta-v table
+
+Added `GameData/VesselPlanner/PluginData/DeltaVTables/OPM.csv`, based on the supplied Outer Planets Mod delta-v map. The table starts with Stock data, moves Eeloo under Sarnus, and adds Sarnus, Urlum, Neidon, Plock, their mapped moons, and parent-to-moon transfer rows used by Mission Planner. Plock uses the lower/ideal value from the map's 1900-2700 m/s transfer range.
 
 ### 0.7.52 part-image slider alignment
 
@@ -153,9 +203,10 @@ VesselPlanner can read older EngineStagePlanner settings, Stage-By-Stage plans, 
 
 Click the **VesselPlanner** ToolbarController button. Look for the transparent checklist-and-rising-graph icon.
 
-The editor window has four operating modes:
+The editor window has five operating modes:
 
 - **Mission Planner** — build an ordered maneuver list and estimate required delta-v from a planet-pack CSV table.
+- **Delta-V Table** — browse the active planet-pack delta-v table as an expandable planet/moon tree.
 - **Stage-By-Stage** — build and save a complete vessel plan one stage at a time.
 - **Analyze Existing** — inspect a stage already on the vessel and compare replacement engines.
 - **Planning** — design a stage that does not yet exist.
@@ -367,13 +418,21 @@ The CSV columns are:
 Origin,Destination,dV_to_low_orbit,ejection_dV,capture_dV,transfer_to_low_orbit_dV,total_capture_dV,dV_low_orbit_to_surface,ascent_dV,plane_change_dV,parent,isMoon,order
 ```
 
-When Mission Planner initializes, VesselPlanner detects the active planet pack with `PlanetPackHeuristics`. Known packs use the `PlanetPackKind` name (for example `Stock`, `JNSQ`, `RSS`, or `OPM`); a single unrecognized custom pack uses its detected GameData folder name. Mission Planner then loads `<packName>.csv` from `DeltaVTables`. The included starter tables are `Stock.csv`, `JNSQ.csv`, `GPP.csv`, and `RSS.csv`.
+When Mission Planner initializes, VesselPlanner detects the active planet pack with `PlanetPackHeuristics`. Known packs use the `PlanetPackKind` name (for example `Stock`, `JNSQ`, `RSS`, or `OPM`); a single unrecognized custom pack uses its detected GameData folder name. Mission Planner then loads `<packName>.csv` from `DeltaVTables`. The included starter tables are `Stock.csv`, `OPM.csv`, `JNSQ.csv`, `GPP.csv`, and `RSS.csv`.
 
 When a matching row is available, Launch/Sub-Orbital Launch loads `dV_to_low_orbit` for its selected launch body, Transfer To Another Planet loads `total_capture_dV`, and Landing/Splashdown loads `dV_low_orbit_to_surface`. **Return From A Moon** loads the moon self-row's `ascent_dV` (falling back to `dV_to_low_orbit`) plus the matching parent-to-moon row's `capture_dV`, which represents the reverse moon-escape leg. The loaded value can always be edited manually.
 
 For **Transfer To Another Planet**, VesselPlanner also watches the system clipboard while the maneuver entry window is open. A **Clipboard Δv** dropdown selects **Ejection**, **Insertion**, or **Total**. The choices map directly to the matching clipboard lines: **Ejection** reads only `Ejection Δv:`, **Insertion** reads only `Insertion Δv:`, and **Total** reads only `Total Δv:`. Changing the selection immediately reloads that value into Needed Δv. A matching clipboard value takes precedence over the CSV suggestion; unrelated clipboard routes are ignored. The **Clipboard Δv** dropdown is disabled when the clipboard does not contain usable transfer data for the currently selected destination/route, and it enables automatically when matching data is present. The disabled state now closes any already-open clipboard popup through the ComboBox API, avoiding direct access to ComboBox internals.
 
-## 8. Creating a Stage-By-Stage Plan
+## 8. Delta-V Table
+
+Select **Delta-V Table** at the top of the editor window to browse the active planet-pack CSV without creating a mission step. The page shows bodies orbiting the system's central star as top-level rows. Click a body that has moons to expand or collapse its children; nested moons are shown recursively.
+
+Every row shows **dV to low orbit** from that body's self row. Dedicated columns show **Ejection**, **Capture**, **Plane Change**, and **Total** for every non-home body, plus **Landing** and **Ascent** when the self row provides positive surface values. Values are displayed directly in the table and are styled as clickable labels rather than buttons. Clicking any displayed value copies the numeric delta-v to the system clipboard and displays a confirmation in the fixed status line at the bottom. Solar-orbiting bodies use the home body -> destination route; moons use their immediate parent -> moon route. Zero or unavailable values are left blank. Moon indentation is confined to the Body column so all value columns remain exactly aligned.
+
+The page uses the same detected table as Mission Planner, including Stock, OPM, JNSQ, GPP, RSS, and supported custom tables.
+
+## 9. Creating a Stage-By-Stage Plan
 
 Use **Stage-By-Stage** to design and save an entire vessel before building it.
 
@@ -520,7 +579,7 @@ Deleting requires confirmation and removes only the saved plan file.
 
 # Settings
 
-## 9. Editor Settings
+## 10. Editor Settings
 
 Click **Settings** in the editor planner.
 
@@ -556,8 +615,9 @@ Engine and tank text filtering each provide a **Filter** field and an **Exclude*
 
 Appearance options include:
 
-- **KSP skin** or **Alternate skin**
+- **KSP skin** or **Alternate skin** — the Settings window is four KSP text-line heights taller while KSP skin is active
 - **Use solid backgrounds for all editor windows**
+- **Show tooltips** — enables/disables VesselPlanner hover-help popups and is saved between sessions
 - **ZoomFactor for icons** — zoom used by the static part thumbnails; default `0.8`
 - **ZoomFactor for Rotating Images** — zoom used by the enlarged rotating hover preview; default `1.0`
 - **Camera Yaw Degrees** — horizontal camera angle; range `0–180`, default `45`
@@ -572,13 +632,13 @@ Solid backgrounds are enabled by default for new configurations. The setting app
 
 # Flight Telemetry
 
-## 10. Using the Flight Graph
+## 11. Using the Flight Graph
 
 Click the VesselPlanner toolbar button while in Flight.
 
 > **[IMAGE PLACEHOLDER: Flight telemetry graph during ascent]**
 
-The Flight Data window has a fixed height and is horizontally resizable from the grab handle centered on its right edge. Drag the handle left or right to change only the window width; vertical resizing is disabled. The separate Flight Plot Settings window keeps its normal two-axis resize handle. The graph vertical grid lines keep fixed horizontal positions while the Flight Data window is resized; widening the window adds new grid lines only on the right, and narrowing removes only lines that no longer fit. The vertical grid uses fixed spacing, and the **Time labels** setting can place elapsed-time labels on **Every line**, **Every other**, or **Every third** vertical grid line. The default is **Every third**. Labels stay centered on their selected fixed grid positions; resizing only reveals or removes positions at the right edge.
+The Flight Data window has a fixed height, a **1000 px minimum width**, and is horizontally resizable from the grab handle centered on its right edge. Drag the handle left or right to change only the window width; vertical resizing is disabled. The separate Flight Plot Settings window keeps its normal two-axis resize handle. The graph vertical grid lines keep fixed horizontal positions while the Flight Data window is resized; widening the window adds new grid lines only on the right, and narrowing removes only lines that no longer fit. The vertical grid uses fixed spacing, and the **Time labels** setting can place elapsed-time labels on **Every line**, **Every other**, or **Every third** vertical grid line. The default is **Every third**. Labels stay centered on their selected fixed grid positions; resizing only reveals or removes positions at the right edge.
 
 ### Starting a recording
 
@@ -628,7 +688,7 @@ GameData/VesselPlanner/PluginData/FlightSensorMaxima.tsv
 
 ---
 
-## 11. Flight Settings and Export
+## 12. Flight Settings and Export
 
 Open **Settings** from the flight graph.
 
@@ -669,7 +729,7 @@ Use:
 
 # Reference
 
-## 12. Important Calculation Notes
+## 13. Important Calculation Notes
 
 ### TWR
 
@@ -694,7 +754,7 @@ Propellant requirements are shown in KSP resource units and mass. Where resource
 
 ---
 
-## 13. Files Created by VesselPlanner
+## 14. Files Created by VesselPlanner
 
 Typical persistent files are stored under:
 
@@ -727,7 +787,7 @@ KSP_ROOT/Screenshots
 
 ---
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 ### VesselPlanner does not appear
 
@@ -763,7 +823,7 @@ Plans created before cargo support load with **Additional Cargo Mass = 0**.
 
 The repository `jenkins.txt` is configured for VesselPlanner release builds. It packages `VesselPlanner.version`, `License.md`, `README.md`, and the `Manual` folder under `GameData/VesselPlanner`.
 
-## 15. License
+## 16. License
 
 See `License.md` for license information.
 

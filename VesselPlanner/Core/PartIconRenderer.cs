@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
 using UnityEngine;
 
 namespace VesselPlanner.Core
@@ -55,9 +52,6 @@ namespace VesselPlanner.Core
         /// </summary>
         public const int IconLayer = 31;
 
-        /// <summary>Set true temporarily if you need the per-render diagnostic log line back.</summary>
-        private const bool VerboseLogging = false;
-
         /// <summary>How many still frames make up one full rotation in a rotating preview.</summary>
         public const int RotatingPreviewFrameCount = 60;
 
@@ -76,7 +70,7 @@ namespace VesselPlanner.Core
         /// <param name="size">Width/height of the square output texture, in pixels.</param>
         /// <param name="transparentBackground">If true, background alpha is 0; otherwise backgroundColor is used opaque.</param>
         /// <param name="backgroundColor">Background color (alpha ignored unless transparentBackground is false).</param>
-        /// <param name="zoomFactor">Smaller = camera pulled back further (part appears smaller in frame).</param>
+        /// <param name="zoomFactor">Smaller values make the part appear larger in frame; larger values make it appear smaller.</param>
         /// <param name="cameraPitchDegrees">Downward viewing angle, in degrees above the horizon. 0 = looking straight along the horizontal, 90 = straight down. Defaults to a 20 degree "looking down at the part" angle.</param>
         /// <param name="cameraYawDegrees">Horizontal rotation around the part, in degrees, so the view isn't a flat front-on shot.</param>
         /// <param name="lightIntensity">Brightness of the light illuminating the part. 1.0 is Unity's default directional-light intensity; lower it (e.g. 0.3-0.6) to darken the render, or pass 0 to rely only on Unity's ambient light.</param>
@@ -421,7 +415,6 @@ namespace VesselPlanner.Core
 
             GameObject iconObj = null;
             GameObject camObj = null;
-            Debug.Log("[PartIconRenderer] RenderIconInternal: Rendering thumbnail for " + avPart.partUrl);
 
             try
             {
@@ -508,22 +501,6 @@ namespace VesselPlanner.Core
                     light.color = Color.white;
                     light.intensity = lightIntensity;
                     light.cullingMask = 1 << IconLayer;
-                }
-
-                // Diagnostic log, off by default now that pitch/light are confirmed working -
-                // flip VerboseLogging on if a rendering issue needs investigating again.
-                // Left off here since BuildRotatingPreview calls this once per frame and
-                // would otherwise spam the log.
-                if (VerboseLogging)
-                {
-                    Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        "[PartIconRenderer] part={0} requestedPitch={1:F1} requestedYaw={2:F1} requestedLight={3:F2} " +
-                        "layer={4} rendererCount={5} bounds.center={6} bounds.extents={7} camPos={8} camEuler={9} " +
-                        "camDist={10:F2} orthoSize={11:F2} lightAdded={12}",
-                        avPart.name, cameraPitchDegrees, cameraYawDegrees, lightIntensity,
-                        IconLayer, iconObj.GetComponentsInChildren<Renderer>(true).Length,
-                        bounds.center, bounds.extents, camObj.transform.position, camObj.transform.eulerAngles,
-                        distance, cam.orthographicSize, lightIntensity > 0f));
                 }
 
                 cam.Render();
@@ -640,7 +617,6 @@ namespace VesselPlanner.Core
                 GetPartIdentifier(avPart), size, transparentBackground, zoomFactor, cameraPitchDegrees, cameraYawDegrees, lightIntensity,
                 transparentBackground ? "t" : bg.r.ToString("F2") + "," + bg.g.ToString("F2") + "," + bg.b.ToString("F2"),
                 alphaMultiplier);
-            //Debug.Log("PartIconRendererBuildCacheKey: " + str);
             return str;
         }
 
@@ -677,165 +653,6 @@ namespace VesselPlanner.Core
             _cache.Clear();
         }
 
-        public static void WriteImageToDisk(AvailablePart avPart, Texture2D tex)
-        {
-            string dir = Path.Combine(KSPUtil.ApplicationRootPath, "PartIconRendererTest");
-            if (avPart == null)
-            {
-                Debug.LogError("[PartIconRendererDebugTool] WriteImageToDisk called with a null AvailablePart.");
-                return;
-            }
-            if (tex == null)
-            {
-                // Was previously called unconditionally by PartThumbnailCache.Get even
-                // when RenderThumbnail failed and returned null, which threw a
-                // NullReferenceException on tex.EncodeToPNG() below and masked whatever
-                // actually went wrong behind a generic caught-exception log line.
-                Debug.LogWarning("[PartIconRendererDebugTool] WriteImageToDisk called with a null Texture2D for " + avPart.name + " - nothing to write.");
-                return;
-            }
-            try
-            {
-                Directory.CreateDirectory(dir);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError("[PartIconRendererDebugTool] Could not create directory " + dir + ": " + ex);
-                return;
-            }
-            // Same duplicate-name hazard as the render cache: use the unique partUrl
-            // (sanitized for the filesystem) so two different parts sharing a .name
-            // don't overwrite each other's debug PNG.
-            string label = SanitizeFileName(GetPartIdentifier(avPart));
-            File.WriteAllBytes(Path.Combine(dir, label + ".png"), tex.EncodeToPNG());
 
-        }
-
-        /// Writes every icon currently sitting in the RenderIcon cache to its own PNG
-        /// file in the given directory, named after its cache key (the same key
-        /// BuildCacheKey produces - part name, size, and every render setting baked
-        /// in, so e.g. two renders of the same part at different pitches land in two
-        /// distinctly-named files rather than overwriting each other). Useful for
-        /// bulk-inspecting or debugging exactly what's been rendered/cached so far.
-        /// Does not touch the rotating preview cache - see BuildRotatingPreview's
-        /// frames for that.
-        /// </summary>
-        /// <param name="directory">Folder to write into; created if it doesn't already exist.</param>
-        /// <returns>How many files were written successfully.</returns>
-        public static int DumpCacheToDisk(string directory)
-        {
-            if (string.IsNullOrEmpty(directory))
-            {
-                Debug.LogError("[PartIconRenderer] DumpCacheToDisk called with a null/empty directory.");
-                return 0;
-            }
-
-            try
-            {
-                Directory.CreateDirectory(directory);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError("[PartIconRenderer] DumpCacheToDisk could not create directory " + directory + ": " + ex);
-                return 0;
-            }
-
-            int written = 0;
-            foreach (var entry in _cache)
-            {
-                string cacheKey = entry.Key;
-                Texture2D tex = entry.Value;
-                if (tex == null)
-                    continue;
-
-                string fileName = SanitizeFileName(cacheKey) + ".png";
-                string path = Path.Combine(directory, fileName);
-
-                try
-                {
-                    File.WriteAllBytes(path, tex.EncodeToPNG());
-                    written++;
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError("[PartIconRenderer] DumpCacheToDisk failed to write " + path + ": " + ex);
-                }
-            }
-
-            Debug.Log("[PartIconRenderer] DumpCacheToDisk wrote " + written + "/" + _cache.Count + " cached icon(s) to " + directory);
-            return written;
-        }
-
-        /// <summary>Replaces any character that isn't legal in a filename with an underscore.</summary>
-        private static string SanitizeFileName(string name)
-        {
-            char[] invalidChars = Path.GetInvalidFileNameChars();
-            var sb = new StringBuilder(name.Length);
-            foreach (char c in name)
-                sb.Append(Array.IndexOf(invalidChars, c) >= 0 ? '_' : c);
-            return sb.ToString();
-        }
-    }
-}
-
-
-namespace VesselPlanner.Core
-{
-    /// <summary>
-    /// TEMPORARY debugging aid, not something to ship. Press F9 while in the
-    /// VAB/SPH with at least one part placed on the ship: it renders the first
-    /// part at several pitch/light combinations and writes each as a PNG to
-    /// GameData's parent folder (KSP root)/PartIconRendererTest/. Compare the
-    /// files directly in an image viewer:
-    ///
-    ///   - If the files differ from each other (different angle, different
-    ///     brightness) then PartIconRenderer itself is working correctly, and
-    ///     the problem is in how your own code displays/caches the texture it
-    ///     returns (e.g. a UI element only having its texture assigned once).
-    ///   - If the files all look identical, the bug is inside PartIconRenderer,
-    ///     and the log line each render prints (search Player.log /
-    ///     KSP.log for "[PartIconRenderer]") will show the actual computed
-    ///     camera position/rotation and light intensity used, which is the
-    ///     next thing to inspect.
-    ///
-    /// Delete this file once the real bug is found.
-    /// </summary>
-    [KSPAddon(KSPAddon.Startup.EditorAny, false)]
-    public class PartIconRendererDebugTool : MonoBehaviour
-    {
-        private void Update()
-        {
-            if (!Input.GetKeyDown(KeyCode.F9))
-                return;
-            string dir = Path.Combine(KSPUtil.ApplicationRootPath, "PartIconRendererTest");
-            VesselPlanner.Core.PartIconRenderer.DumpCacheToDisk(dir);
-        }
-
-
-
-        private static void SaveTest(AvailablePart avPart, string dir, string label, float pitch, float yaw, float lightIntensity)
-        {
-            // useCache:false so this test never hands back a stale image regardless
-            // of what your own game code has already cached for this part.
-            Texture2D tex = PartIconRenderer.RenderIcon(
-                avPart,
-                size: 256,
-                transparentBackground: false,
-                backgroundColor: Color.gray,
-                zoomFactor: 0.6f,
-                cameraPitchDegrees: pitch,
-                cameraYawDegrees: yaw,
-                lightIntensity: lightIntensity,
-                useCache: false);
-
-            if (tex == null)
-            {
-                Debug.LogError("[PartIconRendererDebugTool] Render returned null for " + label);
-                return;
-            }
-
-            File.WriteAllBytes(Path.Combine(dir, label + ".png"), tex.EncodeToPNG());
-            UnityEngine.Object.Destroy(tex);
-        }
     }
 }

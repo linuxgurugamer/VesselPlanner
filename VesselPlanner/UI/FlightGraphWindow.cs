@@ -1,4 +1,4 @@
-using ClickThroughFix;
+﻿using ClickThroughFix;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,7 +14,7 @@ namespace VesselPlanner.UI
     public sealed class FlightGraphWindow
     {
         private readonly FlightSensorManager _manager = new FlightSensorManager();
-        const float MINIMUM_WINDOW_WIDTH = 935f;
+        const float MINIMUM_WINDOW_WIDTH = 1000f;
         private Rect _window = new Rect(120, 90, MINIMUM_WINDOW_WIDTH, 650);
         private Rect _settingsWindow = new Rect(180, 90, 570, 720);
         private Vector2 _legendScroll;
@@ -56,7 +56,7 @@ namespace VesselPlanner.UI
         private static readonly int FlightSettingsResizeHandleHint = "VesselPlannerFlightSettingsResizeHandle".GetHashCode();
         private const int PixelsPerSample = 2;
         private const int GridDivisions = 10;
-        // At the 935 px minimum window width the graph is 907 px wide. The fixed grid
+        // At the 1000 px minimum window width the graph is 972 px wide. The fixed grid
         // spacing is derived from the original 226 px elapsed-time interval, divided into
         // three equal columns. Resizing keeps that grid phase fixed and only reveals or
         // removes columns at the right edge.
@@ -212,11 +212,8 @@ namespace VesselPlanner.UI
                     _graphDirty = true;
                     _status = "Plot data cleared.";
                 }
-                if (GUILayout.Button("Settings", GUILayout.Width(80))) SettingsVisible = !SettingsVisible;
-                if (GUILayout.Button("Export CSV", GUILayout.Width(90))) ExportCsv();
-                if (GUILayout.Button("Export PNG", GUILayout.Width(90))) ExportPng();
                 GUILayout.Space(8f);
-                GUILayout.Label("Sample", GUILayout.Width(48));
+                GUILayout.Label("Sample Interval", GUILayout.Width(120));
                 if (GUILayout.Button("-", GUILayout.Width(24)))
                     AdjustSampleDelay(-SampleDelayStepSeconds);
                 string newDelayText = GUILayout.TextField(_sampleDelayText, GUILayout.Width(48));
@@ -236,9 +233,10 @@ namespace VesselPlanner.UI
                 }
                 if (GUILayout.Button("+", GUILayout.Width(24)))
                     AdjustSampleDelay(SampleDelayStepSeconds);
-                GUILayout.Label("s", GUILayout.Width(15));
+                GUILayout.Label("/sec", GUILayout.Width(34));
                 GUILayout.FlexibleSpace();
                 GUILayout.Label(_manager.Samples.Count.ToString(CultureInfo.InvariantCulture) + " samples", GUILayout.Width(90));
+                if (GUILayout.Button("Settings", GUILayout.Width(80))) SettingsVisible = !SettingsVisible;
                 if (GUILayout.Button("×", GUILayout.Width(30))) Visible = false;
             }
 
@@ -268,8 +266,20 @@ namespace VesselPlanner.UI
             if (_manager.IsRecording && _manager.IsGamePaused)
                 GUILayout.Label("Game paused - plotting is suspended.");
             if (!string.IsNullOrEmpty(_status)) GUILayout.Label(_status);
-            GUILayout.Label("CSV export: " + GetCsvExportFolder());
-            GUILayout.Label("PNG export: " + GetPngExportFolder());
+
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label("CSV export: " + GetCsvExportFolder());
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Export CSV", GUILayout.Width(90))) ExportCsv();
+            }
+
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label("PNG export: " + GetPngExportFolder());
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Export PNG", GUILayout.Width(90))) ExportPng();
+            }
 
             // Flight Data is intentionally height-fixed. Resize only horizontally from
             // the centered grab handle on the right edge. The handle is an absolute overlay
@@ -1418,6 +1428,14 @@ namespace VesselPlanner.UI
         private static void DrawColorSwatch(Color32 color)
         {
             Rect rect = GUILayoutUtility.GetRect(14f, 14f, GUILayout.Width(14f), GUILayout.Height(14f));
+            // The swatch's GUILayout rect is aligned to the top of the sensor row.
+            // Lower it by half a label line so it is visually centered beside the text.
+            float labelLineHeight = GUI.skin != null && GUI.skin.label != null
+                ? GUI.skin.label.lineHeight
+                : 16f;
+            if (labelLineHeight <= 0f) labelLineHeight = 16f;
+            rect.y += labelLineHeight * 0.5f;
+
             Color old = GUI.color;
             GUI.color = color;
             GUI.DrawTexture(rect, Texture2D.whiteTexture);

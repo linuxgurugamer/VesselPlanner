@@ -77,6 +77,7 @@
     <Compile Include="UI\WindowSkin.cs" />
     <Compile Include="UI\ComboBox.cs" />
     <Compile Include="UI\MissionPlannerPage.cs" />
+    <Compile Include="UI\DeltaVTablePage.cs" />
     <Compile Include="UI\StagePlanWindow.cs" />
     <Compile Include="UI\PlannerWindow.cs" />
     <Compile Include="UI\FlightGraphWindow.cs" />

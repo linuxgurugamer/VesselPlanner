@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -8,11 +8,42 @@ namespace VesselPlanner.Core
 {
     public static class CommonRoutines
     {
-        public static string FormatManeuver(Maneuver maneuver)
+        public static string AddSpacesToString(string value)
         {
-            string name = maneuver.ToString();
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+            string name = value.Trim();
             name = Regex.Replace(name, "([a-z0-9])([A-Z])", "$1 $2");
             return Regex.Replace(name, "([A-Z])([A-Z][a-z])", "$1 $2");
+        }
+
+        public static string FormatManeuver(Maneuver maneuver)
+        {
+            return AddSpacesToString(maneuver.ToString());
+        }
+
+        public static void DrawTooltip(bool enabled, float windowWidth, float windowHeight)
+        {
+            if (!enabled) return;
+
+            string tooltip = GUI.tooltip;
+            if (string.IsNullOrEmpty(tooltip)) return;
+
+            float width = Mathf.Min(360f, Mathf.Max(220f, windowWidth - 16f));
+            GUIStyle style = new GUIStyle(GUI.skin.box)
+            {
+                alignment = TextAnchor.UpperLeft,
+                wordWrap = true,
+                padding = new RectOffset(8, 8, 6, 6)
+            };
+            GUIContent content = new GUIContent(tooltip);
+            float height = style.CalcHeight(content, width);
+            Vector2 mouse = Event.current.mousePosition;
+            float x = Mathf.Clamp(mouse.x + 16f, 4f, Mathf.Max(4f, windowWidth - width - 4f));
+            float y = mouse.y + 20f;
+            if (y + height > windowHeight - 4f)
+                y = Mathf.Max(4f, mouse.y - height - 10f);
+            GUI.Box(new Rect(x, y, width, height), content, style);
         }
 
 

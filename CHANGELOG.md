@@ -1,4 +1,140 @@
+﻿## 0.7.75
+- Added `Manual/VesselPlanner-Analyze-Existing-Tutorial.docx`, covering stage selection, current-resource simulation, environment/candidate filters, result columns, Selected Engine details, part placement, layout controls, examples, and troubleshooting.
+- Added `Manual/VesselPlanner-Planning-Tutorial.docx`, covering payload and delta-v basis, optimization modes, body/altitude behavior, candidate results, actual tank-set selection, placement actions, Delta-V Table/Mission Planner integration, examples, and troubleshooting.
+- Updated `VesselPlanner.version` and assembly version to 0.7.75.0.
+
+## 0.7.74
+- Added `Manual/VesselPlanner-Mission-Planner-Tutorial.docx`, a dedicated walkthrough of mission step types, automatic delta-v suggestions, transfer-planner clipboard import, subassemblies, list editing, save/load, and Stage-by-Stage integration.
+- Reworked `Manual/VesselPlanner-Stage-by-Stage-Tutorial.docx` for the current mission-linked workflow, current engine/tank selection behavior, subassemblies, part previews, cumulative mass, finalization, and standalone/mission-driven planning.
+- Updated `VesselPlanner.version` and assembly version to 0.7.74.0.
+
+## 0.7.73
+- Added a one-page Table of Contents to the main Word manual, listing all major sections with verified page numbers.
+- Updated the manual title/version and release metadata to 0.7.73.0.
+
+## 0.7.72
+- Reworked the user manual as a current-capabilities guide rather than relying on accumulated historical notes.
+- Corrected Planning documentation for selectable Vacuum/Atmosphere target delta-v behavior and current engine/tank filtering.
+- Documented current Mission Planner, Stage-By-Stage, Delta-V Table, part-image, Settings, and Flight Data behavior through 0.7.71.
+- Corrected Flight Data documentation for the 1000 px minimum width, Sample Interval controls, bottom-row CSV/PNG exports, configurable folders, axes, and persistent maxima.
+- Regenerated `Manual/VesselPlanner-Manual.docx` from the refreshed manual and updated release/version metadata to 0.7.72.0.
+
+## 0.7.71
+- Moved the **Delta-V Table** mode button to immediately right of **Planning**, separated by an 18-pixel gap.
+- Updated `VesselPlanner.version` and assembly version to 0.7.71.0.
+
+## 0.7.70
+- Replaced Delta-V Table metric buttons with clickable numeric values under dedicated Ejection, Capture, Plane Change, Total, Landing, and Ascent column headers.
+- Removed the Selected Value column; clicking any displayed value copies the numeric delta-v to the clipboard and reports it in the bottom status line.
+- Reworked Delta-V Table rows to use absolute fixed column rectangles so moon indentation affects only the Body cell and all value columns align exactly with planet and home-body rows.
+- Updated `VesselPlanner.version` and assembly version to 0.7.70.0.
+
+## 0.7.69
+- Moved Delta-V Table clipboard confirmations into a fixed status line at the bottom of the page.
+- Reworked Delta-V Table row layout into fixed-width Body, route, and surface column groups so planets, moons, and the home-body row stay aligned.
+- Made the always-visible **dV to low orbit** value clickable; clicking it copies the numeric value to the clipboard and selects Low Orbit for that row.
+- Updated `VesselPlanner.version` and assembly version to 0.7.69.0.
+
+## 0.7.68
+- Delta-V Table value buttons now copy the selected numeric delta-v value to the system clipboard.
+- Added an on-page confirmation showing the metric, body, and copied value in m/s.
+- Updated `VesselPlanner.version` and assembly version to 0.7.68.0.
+
+## 0.7.67
+- Removed the **Transfer** button from the Delta-V Table page.
+- Delta-V Table route and surface buttons are now omitted when their value is zero or unavailable.
+- Expandable body names now use label styling while remaining clickable to expand/collapse moons.
+- Updated `VesselPlanner.version` and assembly version to 0.7.67.0.
+
+## 0.7.66
+- Added a new **Delta-V Table** editor page alongside Mission Planner, Stage-By-Stage, Analyze Existing, and Planning.
+- The page displays solar-orbiting bodies as a tree and expands each body's moons (including nested moons such as Wal -> Tal).
+- Every body row always shows `dV_to_low_orbit`. Non-home bodies provide **Ejection**, **Transfer**, **Capture**, **Plane Change**, and **Total** buttons; bodies with a surface landing value also provide **Landing** and **Ascent**.
+- Clicking a value button displays the corresponding delta-v from the active planet-pack CSV. Planet routes use home-body -> planet rows; moon routes use parent -> moon rows.
+- Updated `VesselPlanner.version` and assembly version to 0.7.66.0.
+
+## 0.7.65
+- Added `GameData/VesselPlanner/PluginData/DeltaVTables/OPM.csv`, starting from the Stock table and adding Outer Planets Mod bodies/routes derived from the supplied OPM delta-v map.
+- Updated Eeloo metadata for OPM so it is a moon of Sarnus rather than a solar-orbiting planet.
+- Added Sarnus, Urlum, Neidon, Plock, their mapped moons, and Tal as a subsatellite of Wal.
+- Plock uses the lower/ideal end of the map's 1900-2700 m/s outer-transfer range.
+- Updated `VesselPlanner.version` and assembly version to 0.7.65.0.
+
+## 0.7.64
+- Widened the Flight Data **Sample Interval** label from 96 px to 120 px.
+
 # Changelog
+
+## 0.7.63
+
+- Moved **Export CSV** from the Flight Data top toolbar to the CSV export-path row at the bottom of the window.
+- Moved **Export PNG** from the Flight Data top toolbar to the PNG export-path row at the bottom of the window.
+- Kept **Settings** in the top-right toolbar immediately before the close button.
+- Updated `VesselPlanner.version` and assembly version to 0.7.63.0.
+
+## 0.7.62
+
+- Increased the minimum width of the Flight Data window from 935 px to **1000 px**.
+- Updated `VesselPlanner.version` and assembly version to 0.7.62.0.
+
+## 0.7.61
+
+- Moved the Flight Data **Settings** button to the right of **Export CSV** and **Export PNG**, immediately before the close button.
+- Renamed the Flight Data sampling control from **Sample** to **Sample Interval** and changed the displayed suffix from `s` to `/sec`.
+- Lowered the Plotted Sensors color swatch by half the active label line height for better vertical alignment.
+- Updated `VesselPlanner.version` and assembly version to 0.7.61.0.
+
+## 0.7.60
+
+- Removed the `VerboseLogging` flag and per-render verbose diagnostic logging from `PartIconRenderer.cs`.
+- Removed the temporary `PartIconRendererDebugTool`, F9 cache dump support, disk-image diagnostic helpers, and related debug-only code.
+- Removed the remaining thumbnail diagnostic log/disk-write calls from `PartThumbnailCache.cs`.
+- Updated `VesselPlanner.version` and assembly version to 0.7.60.0.
+
+## 0.7.59
+
+- Removed the obsolete `RenderRotatingPreview` method from `PartThumbnailCache.cs`.
+- Removed the legacy live-preview camera, pivot, light, render-texture, clone, and timing fields now superseded by `PartIconRenderer`.
+- Removed legacy helper members used only by that obsolete rendering path.
+- Updated `VesselPlanner.version` and assembly version to 0.7.59.0.
+
+## 0.7.58
+
+- Made the Settings section headers **Planning mode behavior**, **Filter persistence**, **Editor window appearance**, **Part images**, and **Detail pane sizes** bold.
+- Increased the Settings window height by about one button height when using the Alternate skin.
+- Kept the KSP skin's existing four-line height allowance and added one button height plus two more label lines.
+- Moved the Flight Data **Settings**, **Export CSV**, and **Export PNG** buttons to the far-right toolbar group immediately before the close button.
+- Updated `VesselPlanner.version` and assembly version to 0.7.58.0.
+
+## 0.7.57
+
+- Consolidated the duplicate Settings/Mission Planner tooltip drawing logic into `CommonRoutines.DrawTooltip()`.
+- Settings and Mission Planner now use the same common tooltip renderer.
+- Removed the local `DrawSettingsTooltip()` and `DrawMissionTooltip()` methods.
+- Updated `VesselPlanner.version` and assembly version to 0.7.57.0.
+
+## 0.7.56
+
+- Made the editor Settings window four KSP label-line heights taller whenever the KSP skin is active; the Alternate skin keeps the existing 720-pixel height.
+- Added a saved **Show tooltips** setting under Settings → Appearance, enabled by default.
+- Disabling tooltips suppresses the Part Images field/slider hover help and Mission Planner ASL/VAC plus insert/order/delete button hover help immediately.
+- Updated `VesselPlanner.version` and assembly version to 0.7.56.0.
+
+## 0.7.55
+
+- Updated both Part Images zoom tooltips to explain that lower zoom-factor values make the rendered part image larger.
+- Increased the VesselPlanner Settings window from 600×680 to 640×720 pixels.
+- Added visible hover tooltips for the Mission Planner ASL/VAC basis buttons and the insert/order controls in the mission-step list.
+- Added `CommonRoutines.AddSpacesToString()` for consistently inserting spaces into PascalCase/camelCase labels.
+- Changed `FormatManeuver()` to use the new common string-spacing routine.
+- Removed the local `ModeLabel()` helper and now formats optimization-mode labels with `CommonRoutines.AddSpacesToString()`.
+- Updated `VesselPlanner.version` and assembly version to 0.7.55.0.
+
+## 0.7.54
+
+- Added hover tooltips to the text-entry fields and sliders for all numeric Part Images settings in Settings → Appearance.
+- Tooltips explain icon/rotating zoom, camera yaw/pitch, rotating-preview resolution, and rotating-preview speed behavior.
+- Updated `VesselPlanner.version` and assembly version to 0.7.54.0.
 
 ## 0.7.53
 

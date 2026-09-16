@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -14,9 +14,6 @@ namespace VesselPlanner.KSP
     {
         private const int ThumbnailPixels = 64;
         private const int PreviewPixels = 192;
-        private const int ThumbnailLayer = 31;
-        private const int RotatingPreviewLayer = 30;
-        private const float RotatingPreviewDegreesPerSecond = 18f;
         private static float IconZoomFactor = 0.8f;
         private static float RotatingImageZoomFactor = 1.0f;
         private static float CameraYawDegrees = 45f;
@@ -24,7 +21,6 @@ namespace VesselPlanner.KSP
         private static int RotatingImageBackground = 0;
         private static int RotatingPreviewSize = 100;
         private static int RotatingPreviewDegreesPerFrame = 60;
-        private static readonly Color32 ChromaKey = new Color32(3, 251, 113, 255);
         private static readonly Dictionary<string, Texture2D> Thumbnails =
             new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
         private static readonly HashSet<string> FailedParts =
@@ -149,8 +145,6 @@ namespace VesselPlanner.KSP
             if (FailedParts.Contains(cacheKey)) return null;
 
             AvailablePart available = ResolveAvailablePart(partName, partUrl);
-            Debug.Log("[PartIconRenderer] Get: partName=" + partName + ", partUrl=" + partUrl + ", available=" + (available != null ? available.name : "null"));
-
             if (available == null)
             {
                 FailedParts.Add(cacheKey);
@@ -159,7 +153,6 @@ namespace VesselPlanner.KSP
             try
             {
                 Texture2D thumbnail = RenderThumbnail(available, renderPixels);
-                VesselPlanner.Core.PartIconRenderer.WriteImageToDisk(available, thumbnail);
                 if (thumbnail == null)
                 {
                     FailedParts.Add(cacheKey);
@@ -206,7 +199,6 @@ namespace VesselPlanner.KSP
             RotatingPreviewTexture = null;
         }
 
-
         private static Texture2D RenderThumbnail(AvailablePart available, int renderPixels)
         {
             if (available == null) return null;
@@ -220,45 +212,6 @@ namespace VesselPlanner.KSP
             return a;
         }
 
-
-        private static bool IsChromaKey(Color32 color, Color32 renderedKey)
-        {
-            // Allow a small tolerance for antialiasing/color conversion on the render target.
-            return Math.Abs(color.r - renderedKey.r) <= 3 &&
-                   Math.Abs(color.g - renderedKey.g) <= 3 &&
-                   Math.Abs(color.b - renderedKey.b) <= 3;
-        }
-
-        private static GameObject CreateDirectionalLight(string name, Quaternion rotation, float intensity)
-        {
-            return CreateDirectionalLight(name, rotation, intensity, ThumbnailLayer);
-        }
-
-        private static GameObject CreateDirectionalLight(string name, Quaternion rotation, float intensity, int layer)
-        {
-            GameObject lightObject = new GameObject(name);
-            lightObject.hideFlags = HideFlags.HideAndDontSave;
-            lightObject.layer = layer;
-            lightObject.transform.rotation = rotation;
-            Light light = lightObject.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = intensity;
-            light.cullingMask = 1 << layer;
-            return lightObject;
-        }
-
-        private static void SetLayerRecursively(GameObject root, int layer)
-        {
-            if (root == null) return;
-            root.layer = layer;
-            Transform transform = root.transform;
-            for (int i = 0; i < transform.childCount; i++)
-            {
-                Transform child = transform.GetChild(i);
-                if (child != null)
-                    SetLayerRecursively(child.gameObject, layer);
-            }
-        }
 
         private static string BasePartName(string plannedPartName)
         {

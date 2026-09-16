@@ -1,4 +1,4 @@
-using ClickThroughFix;
+﻿using ClickThroughFix;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -71,12 +71,14 @@ namespace VesselPlanner.UI
             .ToArray();
         private static readonly string[] ClipboardDeltaVNames = { "Ejection", "Insertion", "Total" };
 
-        static public GUIContent upContent = new GUIContent("▲", "Move up");
-        static public GUIContent downContent = new GUIContent("▼", "Move down");
+        static public GUIContent upContent = new GUIContent("▲", "Move this mission step one position earlier in the mission order.");
+        static public GUIContent downContent = new GUIContent("▼", "Move this mission step one position later in the mission order.");
         static public GUIContent addContent = new GUIContent("<B>+</B>", "Add child");
-        static public GUIContent addAboveContent = new GUIContent("+▲", "Add above");
-        static public GUIContent addBelowContent = new GUIContent("-▼", "Add below");
-        static public GUIContent deleteContent = new GUIContent("✖", "Delete");
+        static public GUIContent addAboveContent = new GUIContent("+▲", "Insert a new mission step immediately above this row.");
+        static public GUIContent addBelowContent = new GUIContent("-▼", "Insert a new mission step immediately below this row.");
+        static public GUIContent deleteContent = new GUIContent("✖", "Delete this mission step.");
+        private static readonly GUIContent AslBasisContent = new GUIContent("ASL", "Use the atmospheric/ASL delta-v basis for this mission step.");
+        private static readonly GUIContent VacBasisContent = new GUIContent("VAC", "Use the vacuum delta-v basis for this mission step.");
 
         private const int ManeuverComboId = 41001;
         private const int BodyComboId = 41002;
@@ -88,6 +90,7 @@ namespace VesselPlanner.UI
         private const int LoadWindowId = 19041978;
 
         public bool EntryVisible { get { return _entryVisible || _loadVisible; } }
+        public bool TooltipsEnabled { get; set; } = true;
 
         public void CloseEntry()
         {
@@ -162,20 +165,27 @@ namespace VesselPlanner.UI
                         Rect rowEnd = GUILayoutUtility.GetLastRect();
                         HandleRowDoubleClick(i, rowStart, rowEnd);
                         if (GUILayout.Button(addAboveContent, iconButtonStyle, GUILayout.Width(40))) OpenEntry(i);
+                        RegisterMissionTooltip(GUILayoutUtility.GetLastRect(), addAboveContent.tooltip);
                         if (GUILayout.Button(addBelowContent, iconButtonStyle, GUILayout.Width(40))) OpenEntry(i + 1);
+                        RegisterMissionTooltip(GUILayoutUtility.GetLastRect(), addBelowContent.tooltip);
 
                         bool oldEnabled = GUI.enabled;
                         GUI.enabled = oldEnabled && i > 0;
                         if (GUILayout.Button(upContent, iconButtonStyle, GUILayout.Width(32))) { moveFrom = i; moveTo = i - 1; }
+                        Rect upRect = GUILayoutUtility.GetLastRect();
                         GUI.enabled = oldEnabled && i < _maneuvers.Count - 1;
                         if (GUILayout.Button(downContent, iconButtonStyle, GUILayout.Width(32))) { moveFrom = i; moveTo = i + 1; }
+                        Rect downRect = GUILayoutUtility.GetLastRect();
                         GUI.enabled = oldEnabled;
+                        RegisterMissionTooltip(upRect, upContent.tooltip);
+                        RegisterMissionTooltip(downRect, downContent.tooltip);
                         if (GUILayout.Button(deleteContent, deleteButtonStyle, GUILayout.Width(32)))
                         {
                             _maneuvers.RemoveAt(i);
                             RefreshDerivedBodies();
                             break;
                         }
+                        RegisterMissionTooltip(GUILayoutUtility.GetLastRect(), deleteContent.tooltip);
                     }
                 }
 
@@ -196,6 +206,8 @@ namespace VesselPlanner.UI
                 GUILayout.FlexibleSpace();
                 GUILayout.Label("Total Δv: " + _maneuvers.Sum(m => m.DeltaV).ToString("0", CultureInfo.InvariantCulture) + " m/s", GUILayout.Width(180));
             }
+
+            CommonRoutines.DrawTooltip(TooltipsEnabled, 1100f, Screen.height);
         }
 
         private void DrawHeader()
@@ -400,8 +412,10 @@ namespace VesselPlanner.UI
                     GUILayout.Label("Needed Δv (m/s)", GUILayout.Width(110));
                     _deltaVText = GUILayout.TextField(_deltaVText ?? string.Empty, GUILayout.Width(100));
                     GUILayout.Space(16);
-                    if (GUILayout.Toggle(_basis == DeltaVBasis.Atmospheric, "ASL", "Button", GUILayout.Width(70))) _basis = DeltaVBasis.Atmospheric;
-                    if (GUILayout.Toggle(_basis == DeltaVBasis.Vacuum, "VAC", "Button", GUILayout.Width(70))) _basis = DeltaVBasis.Vacuum;
+                    if (GUILayout.Toggle(_basis == DeltaVBasis.Atmospheric, AslBasisContent, "Button", GUILayout.Width(70))) _basis = DeltaVBasis.Atmospheric;
+                    RegisterMissionTooltip(GUILayoutUtility.GetLastRect(), AslBasisContent.tooltip);
+                    if (GUILayout.Toggle(_basis == DeltaVBasis.Vacuum, VacBasisContent, "Button", GUILayout.Width(70))) _basis = DeltaVBasis.Vacuum;
+                    RegisterMissionTooltip(GUILayoutUtility.GetLastRect(), VacBasisContent.tooltip);
                 }
 
                 // Apply clipboard values after the text field has processed this frame. Otherwise an
@@ -428,7 +442,17 @@ namespace VesselPlanner.UI
                 }
             }
 
+            CommonRoutines.DrawTooltip(TooltipsEnabled, _entryWindow.width, _entryWindow.height);
             GUI.DragWindow(new Rect(0f, 0f, _entryWindow.width, _entryWindow.height));
+        }
+
+        private void RegisterMissionTooltip(Rect controlRect, string tooltip)
+        {
+            if (!TooltipsEnabled || string.IsNullOrEmpty(tooltip)) return;
+            bool oldEnabled = GUI.enabled;
+            GUI.enabled = true;
+            GUI.Label(controlRect, new GUIContent(string.Empty, tooltip), GUIStyle.none);
+            GUI.enabled = oldEnabled;
         }
 
         private void DrawLocationSelectors()
