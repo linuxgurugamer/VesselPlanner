@@ -1,6 +1,8 @@
-﻿## 0.7.76
-- Updated the "x" boxes to be at the top right of the windows.
-- Renamed ToolbarRegistration to RegisterToolbar
+﻿## 0.7.77
+- Rewrote `README.md` as a current-capabilities overview instead of a release-by-release history.
+- Consolidated editor modes, engine/tank planning, part images, delta-v tables, Settings, Flight Data, documentation, saved-data locations, calculation notes, known limits, and source-build information into the README.
+- Historical release details remain in `CHANGELOG.md`.
+- Updated `VesselPlanner.version` and assembly version to 0.7.77.0.
 
 ## 0.7.75
 - Added `Manual/VesselPlanner-Analyze-Existing-Tutorial.docx`, covering stage selection, current-resource simulation, environment/candidate filters, result columns, Selected Engine details, part placement, layout controls, examples, and troubleshooting.
