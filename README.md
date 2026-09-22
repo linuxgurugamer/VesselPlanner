@@ -1,8 +1,8 @@
-# VesselPlanner for KSP1
+﻿# VesselPlanner for KSP1
 
 VesselPlanner is a planning, staging, mission-design, delta-v reference, part-selection, and flight-telemetry mod for **Kerbal Space Program 1.12.x**.
 
-It is capable of analyzing a existing stage, sizing a new stage, comparing different engine options, finding combinations of compatible tanks, constructing and saving complete multi-stage vessel plans, creating mission plans, accessing the planet-pack delta-v data, placing the selected parts into the KSP editor, and recording or exporting flight telemetry.
+It can analyze an existing stage, size a new stage, compare engine choices, find compatible tank combinations, build and save complete multi-stage vessel plans, create mission plans, browse planet-pack delta-v data, place selected parts into the KSP editor, and record/export flight telemetry.
 
 For detailed change history, see [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -68,7 +68,7 @@ GameData/000_ClickThroughBlocker/
 
 5. Start KSP.
 
-VesselPlanner is able to migrate the older EngineStagePlanner settings, Stage-By-Stage plans, and stored flight maxima in cases where equivalent VesselPlanner files do not already exist.
+VesselPlanner can migrate older EngineStagePlanner settings, Stage-By-Stage plans, and stored flight maxima when equivalent VesselPlanner files do not already exist.
 
 ## Opening VesselPlanner
 
@@ -77,7 +77,7 @@ VesselPlanner uses one ToolbarController button in both the editor and flight sc
 - In the **VAB/SPH**, the button opens the main VesselPlanner editor window.
 - In **flight**, the button opens the Flight Data window.
 
-The main editing window can be resized horizontally to a fairly large degree - at least 1150 pixels, at most 1600 pixels - and the width you last chose will be kept for the next time. Apart from the header columns on the candidate table, the rows can be scrolled horizontally. This will ensure that the columns keep aligned.
+The main editor window is horizontally resizable from approximately **1150 to 1850 pixels**, and the selected width is remembered. Candidate-table headers scroll horizontally with the rows so columns stay aligned.
 
 The editor modes are grouped approximately as:
 
@@ -89,7 +89,7 @@ Mission Planner | Stage-By-Stage    Analyze Existing | Planning    Delta-V Table
 
 ### Analyze Existing
 
-**Analyze Existing** should be used when the craft currently selected has a stage of the desired type you can already access in-game, and you want to know the details or even test out new parts or replacement engines.
+Use **Analyze Existing** when a stage already exists on the current craft and you want to understand it or compare replacement engines against the real stage.
 
 Features include:
 
@@ -114,7 +114,7 @@ Features include:
 
 ### Planning
 
-If you want to design or to size a stage which is absent in a current craft then use **Planning**.
+Use **Planning** to design a stage that does not exist yet or to size a stage independently from the current craft.
 
 Planning supports:
 
@@ -250,7 +250,7 @@ Planning and Analyze Existing share a sortable candidate engine table. Available
 
 Individual columns can be enabled or disabled in Settings.
 
-The candidates are the part files from KSP which have been loaded excluding part files specified by the `ExcludeFilters` option in the editor. The currently selected KSP part category is not a filter to find VesselPlanner candidates.
+Candidates come from KSP's loaded part database after editor `ExcludeFilters` are applied. The currently selected KSP editor category is not used as a VesselPlanner candidate filter.
 
 ### Engine filtering
 
@@ -279,7 +279,7 @@ Tank planning supports:
 - Direct part placement in normal Planning.
 - **Add to Stage** behavior while Stage-By-Stage is capturing an Engines & Tanks stage.
 
-To make a tank suggestion valid, it has to be a tank with parts that are connected by both a `top` and `bottom` nodes. The ones that are radial or only one-ended have been consciously left out so this list will not include them.
+Tank suggestions require storage parts with both `top` and `bottom` attach nodes. Radial or one-ended tanks are intentionally excluded from this list.
 
 ## Part images and editor placement
 
@@ -291,7 +291,7 @@ VesselPlanner displays KSP part thumbnails in:
 - Planning tank-set rows
 - Stage-By-Stage engine/tank build-list rows
 
-The part illustrations are taken from the actual, loaded `AvailablePart.partUrl` if it's possible, and this allows one to tell apart mod parts that are identical except for their internal names.
+Part images use the exact loaded `AvailablePart.partUrl` when available, which helps distinguish mod parts that share the same internal name.
 
 Hovering over a thumbnail shows a larger rotating preview generated from KSP's editor icon prefab.
 
@@ -307,7 +307,7 @@ Configurable part-image controls include:
 
 Changing these settings invalidates the relevant image cache so new thumbnails/previews use the new configuration.
 
-VesselPlanner follows KSP's usual editor part-selection path for placing things. Pressing engine or tank Add causes the KSP editor cursor to select the part which was previously highlighted. Settings for Analyze Existing and Planning can each choose independently whether the window is to be closed by VesselPlanner upon a successful Add.
+VesselPlanner uses KSP's normal editor part-selection path for placement. Engine and tank **Add** actions select the corresponding part on the KSP editor cursor. Analyze Existing and Planning each have independent settings controlling whether the VesselPlanner window closes after a successful Add.
 
 ## Delta-v tables and planet packs
 
@@ -397,7 +397,7 @@ In flight, the toolbar button opens the Flight Data graph window.
 - Settings button at the top-right next to the close button.
 - Sampling pauses while KSP is paused.
 
-**Start at Launch** can be armed while the vessel is in PRELAUNCH. If you leave that mode, the system will throw away the graph, but it will begin recording automatically through VesselPlanner.
+**Start at Launch** can be armed while the vessel is in PRELAUNCH. When the vessel leaves PRELAUNCH, VesselPlanner clears the existing graph and begins recording automatically.
 
 ### Recorded data
 
@@ -416,12 +416,12 @@ VesselPlanner can record:
 - Every resource currently carried by the active vessel
 - Stock `ModuleEnviroSensor` outputs found on the vessel
 
-The plotting program keeps a history of all the data sources that have been available while the user has been in a plot, even if at the moment they are not showing in the display, so changing selections on the screen would not result in the loss of the samples that have already been collected.
+All available sources are recorded while plotting even if they are not currently visible, so display selections can be changed without losing already-collected samples.
 
 ### Graph behavior
 
 - Plotted-sensor legend with color, current value, maximum value, and units.
-- Scrolling time-series graph.
+- Scrolling time-series graph; after the visible area fills, traces, vertical time-grid lines, elapsed-time labels, and stage markers move left together as new samples arrive.
 - Configurable time labels: every line, every other line, or every third line.
 - Stage activations shown as dashed vertical markers.
 - Configurable altitude chart top with **Body Default**.
@@ -519,19 +519,19 @@ VesselPlanner-Manual.md
 
 ### Stage mass
 
-If possible, AnalyzeExisting would prefer to use KSP's own `VesselDeltaV` / `DeltaVStageInfo` stage mass boundaries.
+Analyze Existing prefers KSP's own `VesselDeltaV` / `DeltaVStageInfo` stage mass boundaries when available.
 
-Planning finds a new stage by working through successive approximations because the amount of propellant needed depends on the estimated tank mass and because of this changes the total mass that the fuel has to accelerate.
+Planning solves a new stage iteratively because required propellant affects estimated tank mass, which changes the total mass the propellant must accelerate.
 
-Dry mass of the tanks is estimated first before the real set of tanks is chosen using the tank dry / fuel mass ratio that is set up.
+Before a real tank set is selected, estimated tank dry mass is calculated from the configured tank dry/fuel mass ratio.
 
 ### Burn time
 
-VesselPlanner calculates mass flow from thrust and Isp, and uses KSP standard gravity (`9. 80665 m/s`). Analyze Existing calculates burn duration from the propellant mixture the candidate can actually consume.
+VesselPlanner derives mass flow from thrust and Isp and uses KSP standard gravity (`9.80665 m/s²`). Analyze Existing calculates burn duration from the propellant mixture the candidate can actually consume.
 
 ### Resources
 
-VesselPlanner gets the propellant list from each loaded engine module without assuming LiquidFuel/Oxidizer. Mass-bearing propellants determine the rocket equation; non-thrust-generating `ignoreForIsp` resources can still be included as requirements. Where available, resource volume refers to KSP `PartResourceDefinition. volume`.
+VesselPlanner reads the propellant list from each loaded engine module rather than assuming LiquidFuel/Oxidizer. Mass-bearing propellants drive the rocket equation; auxiliary `ignoreForIsp` resources can still be shown as requirements. Resource volume uses KSP `PartResourceDefinition.volume` where available.
 
 ## Known limits
 
@@ -545,6 +545,29 @@ The following are not fully modeled:
 - Full MechJeb-style crossfeed/asparagus/drop-tank fuel-flow simulation for every modded arrangement.
 
 For unusual modded fuel-flow systems, Planning with a manually entered payload can be more reliable than depending on a complex editor branch scan.
+
+## Building from source
+
+The project is a C# library targeting:
+
+- **.NET Framework 4.8**
+- **C# 7.3**
+
+The project references KSP's managed assemblies plus ToolbarController and ClickThroughBlocker.
+
+The Visual Studio project is:
+
+```text
+VesselPlanner/VesselPlanner.csproj
+```
+
+The solution is:
+
+```text
+VesselPlanner.sln
+```
+
+The project includes build/deploy helpers for copying the DLL, icons, version file, delta-v tables, bulkhead configuration, and decoupler configuration into a KSP development install.
 
 ## License
 

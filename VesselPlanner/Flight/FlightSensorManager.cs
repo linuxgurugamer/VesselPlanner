@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -71,6 +71,7 @@ namespace VesselPlanner.Flight
         public int SelectionRevision { get; private set; }
         public int MaximaRevision { get; private set; }
         public int StageMarkerRevision { get; private set; }
+        public int SampleRevision { get; private set; }
         public bool CanArmStartOnLaunch
         {
             get
@@ -274,6 +275,7 @@ namespace VesselPlanner.Flight
         {
             _samples.Clear();
             _stageMarkers.Clear();
+            SampleRevision++;
             _nextSampleSequence = 0;
             _hasPendingLaunchStage = false;
             _pendingLaunchStageNumber = -1;
@@ -510,6 +512,7 @@ namespace VesselPlanner.Flight
             }
 
             _samples.Add(sample);
+            SampleRevision++;
             int max = Math.Max(100, MaxSamples);
             if (_samples.Count > max)
                 _samples.RemoveRange(0, _samples.Count - max);

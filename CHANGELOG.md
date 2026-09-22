@@ -1,4 +1,23 @@
-﻿## 0.7.77
+﻿## 0.7.80
+- Fixed Flight Data X-axis scrolling so telemetry traces continue moving left after the plot reaches the right edge.
+- Changed the graph viewport to use sample sequence numbers, keeping scrolling correct even while the rolling sample buffer discards old samples.
+- Vertical time-grid lines and elapsed-time labels now scroll left with the telemetry instead of remaining fixed on the screen.
+- Stage-marker lines and labels use the same sequence-based viewport as the graph, keeping all X-axis elements synchronized.
+- PNG export now uses the same scrolling time-grid and stage-marker alignment as the on-screen graph.
+- Updated `VesselPlanner.version` and assembly version to 0.7.80.0.
+
+## 0.7.79
+- Flight Data now always starts closed.
+- Added forced window hiding from `GameEvents.onGameSceneLoadRequested` in both the Editor and Flight addons.
+- Scene-load and scene-switch hiding now also clears the ToolbarController toggle state, preventing the toolbar from remaining logically active after the window is hidden.
+- Updated `VesselPlanner.version` and assembly version to 0.7.79.0.
+
+## 0.7.78
+- Fixed Flight Data graph scrolling after the rolling sample buffer reaches its maximum size.
+- Added a sample revision counter so every newly captured sample invalidates and redraws the graph even when the sample count remains constant because the oldest sample was discarded.
+- Updated `VesselPlanner.version` and assembly version to 0.7.78.0.
+
+## 0.7.77
 - Rewrote `README.md` as a current-capabilities overview instead of a release-by-release history.
 - Consolidated editor modes, engine/tank planning, part images, delta-v tables, Settings, Flight Data, documentation, saved-data locations, calculation notes, known limits, and source-build information into the README.
 - Historical release details remain in `CHANGELOG.md`.

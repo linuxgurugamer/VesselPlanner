@@ -767,7 +767,7 @@ The Plotted sensors area shows each visible series with:
 - Max value
 - Units
 
-The graph fills left to right with fixed horizontal spacing, then scrolls as new samples arrive. Vertical grid positions remain fixed while the window is resized; widening adds grid lines only on the right and narrowing removes lines that no longer fit.
+The graph fills left to right with fixed horizontal spacing. Once the newest sample reaches the right edge, the visible sample window advances: telemetry traces, vertical time-grid lines, elapsed-time labels, and stage markers all scroll left together as new samples arrive.
 
 Elapsed-time labels can be shown on every grid line, every other line, or every third line.
 

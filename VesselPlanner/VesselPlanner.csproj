@@ -85,10 +85,16 @@
     <Compile Include="VesselPlannerEditorAddon.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="PluginData\Textures\icon_38.png" />
+    <Content Include="PluginData\Textures\icon_24.png" />
+    <Content Include="..\GameData\VesselPlanner\PluginData\DeltaVTables\*.csv" />
     <Content Include="AssemblyVersion.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>AssemblyVersion.cs</LastGenOutput>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <DeltaVTableFile Include="$(SolutionDir)GameData\VesselPlanner\PluginData\DeltaVTables\*.csv" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />

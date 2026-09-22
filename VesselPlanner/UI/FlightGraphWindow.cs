@@ -26,6 +26,7 @@ namespace VesselPlanner.UI
         private readonly Dictionary<string, GraphAxisSide> _axisSides = new Dictionary<string, GraphAxisSide>(StringComparer.Ordinal);
         private readonly List<AxisAnnotation> _axisAnnotations = new List<AxisAnnotation>();
         private int _graphSampleCount = -1;
+        private int _graphSampleRevision = -1;
         private int _graphSelectionRevision = -1;
         private int _graphMaximaRevision = -1;
         private int _graphStageMarkerRevision = -1;
@@ -56,10 +57,10 @@ namespace VesselPlanner.UI
         private static readonly int FlightSettingsResizeHandleHint = "VesselPlannerFlightSettingsResizeHandle".GetHashCode();
         private const int PixelsPerSample = 2;
         private const int GridDivisions = 10;
-        // At the 1000 px minimum window width the graph is 972 px wide. The fixed grid
+        // At the 1000 px minimum window width the graph is 972 px wide. The grid
         // spacing is derived from the original 226 px elapsed-time interval, divided into
-        // three equal columns. Resizing keeps that grid phase fixed and only reveals or
-        // removes columns at the right edge.
+        // three equal columns. The grid shares the telemetry sample-space, so once the
+        // plot fills it scrolls left with the data and elapsed-time labels.
         private const int ReferenceElapsedTimeTickSampleSpacing = 113;
         private const int ReferenceGridLinesPerElapsedTimeTick = 3;
         private const float VerticalGridSpacingPixels =
@@ -112,6 +113,7 @@ namespace VesselPlanner.UI
         public void Update()
         {
             int oldCount = _manager.Samples.Count;
+            int oldSampleRevision = _manager.SampleRevision;
             int oldRevision = _manager.SelectionRevision;
             int oldMaximaRevision = _manager.MaximaRevision;
             int oldStageMarkerRevision = _manager.StageMarkerRevision;
@@ -119,7 +121,8 @@ namespace VesselPlanner.UI
             if (_chartTopAltitudeMeters <= 0.0) SetChartTopFromCurrentBody(true);
             if (_manager.AutoStartedThisUpdate)
                 _status = "Launch detected. Plotting started.";
-            if (_manager.Samples.Count != oldCount || _manager.SelectionRevision != oldRevision ||
+            if (_manager.Samples.Count != oldCount || _manager.SampleRevision != oldSampleRevision ||
+                _manager.SelectionRevision != oldRevision ||
                 _manager.MaximaRevision != oldMaximaRevision || _manager.StageMarkerRevision != oldStageMarkerRevision)
                 _graphDirty = true;
         }
@@ -783,13 +786,15 @@ namespace VesselPlanner.UI
         private void EnsureGraphTexture(int width, int height)
         {
             if (!_graphDirty && _graphTexture != null && _graphWidth == width && _graphHeight == height &&
-                _graphSampleCount == _manager.Samples.Count && _graphSelectionRevision == _manager.SelectionRevision &&
+                _graphSampleCount == _manager.Samples.Count && _graphSampleRevision == _manager.SampleRevision &&
+                _graphSelectionRevision == _manager.SelectionRevision &&
                 _graphMaximaRevision == _manager.MaximaRevision && _graphStageMarkerRevision == _manager.StageMarkerRevision)
                 return;
 
             _graphWidth = width;
             _graphHeight = height;
             _graphSampleCount = _manager.Samples.Count;
+            _graphSampleRevision = _manager.SampleRevision;
             _graphSelectionRevision = _manager.SelectionRevision;
             _graphMaximaRevision = _manager.MaximaRevision;
             _graphStageMarkerRevision = _manager.StageMarkerRevision;
@@ -816,17 +821,13 @@ namespace VesselPlanner.UI
             Color32 border = new Color32(115, 120, 130, 255);
             for (int i = 0; i < pixels.Length; i++) pixels[i] = background;
 
-            // Vertical grid lines keep a fixed X phase while the graph is resized. The
-            // time-label frequency is independent of the grid itself: labels may appear
-            // at every line, every other line, or every third line. Wider graphs reveal
-            // additional fixed grid lines only at the right edge.
+            // The vertical time grid shares the same scrolling sample-space as the
+            // telemetry.  Before the plot fills, sequence zero remains at the left edge.
+            // Once the newest sample reaches the right edge, the visible sequence window
+            // advances and the grid moves left with the traces and stage markers.
             DrawVertical(pixels, width, height, 0, border);
-            for (int gx = 1; ; gx++)
-            {
-                int x = 1 + (int)Math.Round(gx * VerticalGridSpacingPixels);
-                if (x >= width - 1) break;
-                DrawVertical(pixels, width, height, x, grid);
-            }
+            long firstVisibleSequence = GetFirstVisibleSequence(samples, width);
+            DrawScrollingVerticalGrid(pixels, width, height, firstVisibleSequence, grid);
             if (width > 1) DrawVertical(pixels, width, height, width - 1, border);
             for (int gy = 0; gy <= GridDivisions; gy++)
             {
@@ -839,9 +840,10 @@ namespace VesselPlanner.UI
             {
                 // Keep a fixed horizontal spacing between samples. The graph initially fills from
                 // the left edge; once full, the visible sample window advances and the lines scroll left.
-                int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
+                int visibleCapacity = GetVisibleCapacity(width);
                 int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
                 int lastVisible = samples.Count - 1;
+                long viewportFirstSequence = GetFirstVisibleSequence(samples, width);
 
                 for (int seriesIndex = 0; seriesIndex < selected.Count; seriesIndex++)
                 {
@@ -913,8 +915,8 @@ namespace VesselPlanner.UI
                             continue;
                         }
 
-                        int visibleIndex = i - firstVisible;
-                        int x = 1 + visibleIndex * PixelsPerSample;
+                        long sequenceOffset = samples[i].SequenceNumber - viewportFirstSequence;
+                        int x = 1 + (int)(sequenceOffset * PixelsPerSample);
                         x = Math.Max(1, Math.Min(width - 2, x));
                         double normalized = (value - min) / (max - min);
                         normalized = Math.Max(0.0, Math.Min(1.0, normalized));
@@ -940,10 +942,8 @@ namespace VesselPlanner.UI
         {
             if (samples == null || samples.Count == 0 || stageMarkers == null || stageMarkers.Count == 0) return;
 
-            int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
-            int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
-            long firstSequence = samples[firstVisible].SequenceNumber;
-            long lastSequence = firstSequence + visibleCapacity - 1;
+            long firstSequence = GetFirstVisibleSequence(samples, width);
+            long lastSequence = samples[samples.Count - 1].SequenceNumber;
             Color32 markerColor = new Color32(255, 150, 32, 255);
 
             foreach (FlightStageMarker marker in stageMarkers)
@@ -979,25 +979,24 @@ namespace VesselPlanner.UI
             if (samples == null || samples.Count == 0) return;
 
             int width = Math.Max(2, (int)graphRect.width);
-            int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
+            int visibleCapacity = GetVisibleCapacity(width);
             int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
             int lastVisible = samples.Count - 1;
             if (lastVisible < firstVisible) return;
 
-            // The vertical grid owns the fixed X positions. Time labels simply select
-            // every first, second, or third grid line according to the saved setting.
-            // This keeps label positions stationary during horizontal resizing.
+            long firstVisibleSequence = GetFirstVisibleSequence(samples, width);
             double interval = GetVisibleSampleInterval(samples, firstVisible, lastVisible);
             int gridStep = Mathf.Clamp(_elapsedTimeLabelGridInterval, 1, 3);
+            int firstGridIndex = GetFirstPotentiallyVisibleGridIndex(firstVisibleSequence);
 
-            for (int gridIndex = 0; ; gridIndex += gridStep)
+            for (int gridIndex = firstGridIndex; ; gridIndex++)
             {
-                int tickXOffset = GetVerticalGridLineX(gridIndex);
-                if (gridIndex > 0 && tickXOffset >= width - 1) break;
+                int tickXOffset = GetScrollingVerticalGridLineX(gridIndex, firstVisibleSequence);
+                if (tickXOffset >= width - 1) break;
+                if (tickXOffset <= 0 || (gridIndex % gridStep) != 0) continue;
 
-                double sampleOffset = gridIndex == 0
-                    ? 0.0
-                    : (tickXOffset - 1) / (double)PixelsPerSample;
+                double absoluteSamplePosition = GetGridSamplePosition(gridIndex);
+                double sampleOffset = absoluteSamplePosition - firstVisibleSequence;
                 double elapsed = GetElapsedTimeAtSampleOffset(samples, firstVisible, lastVisible, sampleOffset, interval);
 
                 float labelX = graphRect.x + tickXOffset - (ElapsedTimeLabelWidth * 0.5f);
@@ -1037,10 +1036,50 @@ namespace VesselPlanner.UI
             return samples[lastVisible].ElapsedSeconds + (absoluteIndex - lastVisible) * fallbackInterval;
         }
 
-        private static int GetVerticalGridLineX(int gridIndex)
+        private static int GetVisibleCapacity(int width)
         {
-            if (gridIndex <= 0) return 0;
-            return 1 + (int)Math.Round(gridIndex * VerticalGridSpacingPixels);
+            return Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
+        }
+
+        private static long GetFirstVisibleSequence(IList<FlightDataSample> samples, int width)
+        {
+            if (samples == null || samples.Count == 0) return 0L;
+
+            int visibleCapacity = GetVisibleCapacity(width);
+            long lastSequence = samples[samples.Count - 1].SequenceNumber;
+            long firstAvailableSequence = samples[0].SequenceNumber;
+            long desiredFirstSequence = lastSequence - (visibleCapacity - 1L);
+            return Math.Max(firstAvailableSequence, Math.Max(0L, desiredFirstSequence));
+        }
+
+        private static double GetGridSamplePosition(int gridIndex)
+        {
+            return (gridIndex * (double)VerticalGridSpacingPixels) / PixelsPerSample;
+        }
+
+        private static int GetFirstPotentiallyVisibleGridIndex(long firstVisibleSequence)
+        {
+            double scrollPixels = firstVisibleSequence * (double)PixelsPerSample;
+            return Math.Max(0, (int)Math.Floor(scrollPixels / VerticalGridSpacingPixels));
+        }
+
+        private static int GetScrollingVerticalGridLineX(int gridIndex, long firstVisibleSequence)
+        {
+            double scrollPixels = firstVisibleSequence * (double)PixelsPerSample;
+            if (gridIndex <= 0) return -(int)Math.Round(scrollPixels);
+            return 1 + (int)Math.Round(gridIndex * VerticalGridSpacingPixels - scrollPixels);
+        }
+
+        private static void DrawScrollingVerticalGrid(Color32[] pixels, int width, int height, long firstVisibleSequence, Color32 color)
+        {
+            int firstGridIndex = GetFirstPotentiallyVisibleGridIndex(firstVisibleSequence);
+            for (int gridIndex = firstGridIndex; ; gridIndex++)
+            {
+                int x = GetScrollingVerticalGridLineX(gridIndex, firstVisibleSequence);
+                if (x >= width - 1) break;
+                if (x <= 0) continue;
+                DrawVertical(pixels, width, height, x, color);
+            }
         }
 
         private static string FormatElapsedTime(double seconds)
@@ -1059,10 +1098,8 @@ namespace VesselPlanner.UI
             if (samples == null || samples.Count == 0 || markers == null || markers.Count == 0) return;
 
             int width = Math.Max(2, (int)graphRect.width);
-            int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
-            int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
-            long firstSequence = samples[firstVisible].SequenceNumber;
-            long lastSequence = firstSequence + visibleCapacity - 1;
+            long firstSequence = GetFirstVisibleSequence(samples, width);
+            long lastSequence = samples[samples.Count - 1].SequenceNumber;
 
             var style = new GUIStyle(GUI.skin.label)
             {
@@ -1179,25 +1216,27 @@ namespace VesselPlanner.UI
 
         private void DrawExportElapsedTimeLabels(Color32[] pixels, int width, int height, IList<FlightDataSample> samples)
         {
-            int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
+            int visibleCapacity = GetVisibleCapacity(width);
             int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
             int lastVisible = samples.Count - 1;
             if (lastVisible < firstVisible) return;
 
-            // Match the on-screen axis and the selected grid-line frequency exactly.
+            // Match the on-screen scrolling time grid and the selected label frequency.
+            long firstVisibleSequence = GetFirstVisibleSequence(samples, width);
             double interval = GetVisibleSampleInterval(samples, firstVisible, lastVisible);
             int gridStep = Mathf.Clamp(_elapsedTimeLabelGridInterval, 1, 3);
+            int firstGridIndex = GetFirstPotentiallyVisibleGridIndex(firstVisibleSequence);
             Color32 color = new Color32(224, 224, 224, 255);
             int labelY = height - ExportLabelStripHeight + 3;
 
-            for (int gridIndex = 0; ; gridIndex += gridStep)
+            for (int gridIndex = firstGridIndex; ; gridIndex++)
             {
-                int tickX = GetVerticalGridLineX(gridIndex);
-                if (gridIndex > 0 && tickX >= width - 1) break;
+                int tickX = GetScrollingVerticalGridLineX(gridIndex, firstVisibleSequence);
+                if (tickX >= width - 1) break;
+                if (tickX <= 0 || (gridIndex % gridStep) != 0) continue;
 
-                double sampleOffset = gridIndex == 0
-                    ? 0.0
-                    : (tickX - 1) / (double)PixelsPerSample;
+                double absoluteSamplePosition = GetGridSamplePosition(gridIndex);
+                double sampleOffset = absoluteSamplePosition - firstVisibleSequence;
                 double elapsed = GetElapsedTimeAtSampleOffset(samples, firstVisible, lastVisible, sampleOffset, interval);
                 string text = FormatElapsedTime(elapsed);
                 int x = tickX - (MeasureText(text) / 2);
@@ -1210,10 +1249,8 @@ namespace VesselPlanner.UI
             IList<FlightStageMarker> markers = _manager.StageMarkers;
             if (markers == null || markers.Count == 0) return;
 
-            int visibleCapacity = Math.Max(2, ((width - 3) / PixelsPerSample) + 1);
-            int firstVisible = Math.Max(0, samples.Count - visibleCapacity);
-            long firstSequence = samples[firstVisible].SequenceNumber;
-            long lastSequence = firstSequence + visibleCapacity - 1;
+            long firstSequence = GetFirstVisibleSequence(samples, width);
+            long lastSequence = samples[samples.Count - 1].SequenceNumber;
             Color32 color = new Color32(255, 166, 46, 255);
 
             foreach (FlightStageMarker marker in markers)

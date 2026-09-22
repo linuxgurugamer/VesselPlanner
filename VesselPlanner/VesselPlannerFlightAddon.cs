@@ -17,23 +17,29 @@ namespace VesselPlanner
         {
             _window = new VesselPlanner.UI.FlightGraphWindow();
             _window.Initialize();
+            // Windows always start closed.  This also prevents a saved/previous toolbar
+            // toggle state from making the window appear as the scene initializes.
+            _window.Visible = false;
+            _lastVisible = false;
             CreateToolbarButton();
-            _lastVisible = !_window.Visible;
-            SyncToolbarButton();
+            ForceHideWindow();
             UnityEngine.Debug.Log("[VesselPlanner] Flight telemetry loaded");
 
-            GameEvents.onGameSceneLoadRequested.Add(onGameSceneLoadRequested);
-            GameEvents.onGameSceneSwitchRequested.Add(onGameSceneSwitchRequested);
+            GameEvents.onGameSceneLoadRequested.Add(OnGameSceneLoadRequested);
+            GameEvents.onGameSceneSwitchRequested.Add(OnGameSceneSwitchRequested);
         }
 
-        void onGameSceneSwitchRequested(GameEvents.FromToAction<GameScenes, GameScenes> ed)
+        private void OnGameSceneSwitchRequested(GameEvents.FromToAction<GameScenes, GameScenes> scenes)
         {
-            _window.Visible = _lastVisible = false;
+            ForceHideWindow();
         }
 
-        void onGameSceneLoadRequested(GameScenes ed)
+        private void OnGameSceneLoadRequested(GameScenes scene)
         {
-            _window.Visible = _lastVisible = false;
+            // Hide as soon as KSP requests a scene load.  Both the editor and flight
+            // addons do this so no VesselPlanner window carries an open state across
+            // scene transitions.
+            ForceHideWindow();
         }
 
         private void CreateToolbarButton()
@@ -50,6 +56,13 @@ namespace VesselPlanner
                 VesselPlannerEditorAddon.MODNAME);
         }
 
+        private void ForceHideWindow()
+        {
+            if (_window != null) _window.Visible = false;
+            if (_toolbarControl != null) _toolbarControl.SetFalse(false);
+            _lastVisible = false;
+        }
+
         private void ShowWindow()
         {
             if (_window != null) _window.Visible = true;
@@ -58,8 +71,7 @@ namespace VesselPlanner
 
         private void HideWindow()
         {
-            if (_window != null) _window.Visible = false;
-            _lastVisible = false;
+            ForceHideWindow();
         }
 
         private void Update()
@@ -85,8 +97,8 @@ namespace VesselPlanner
 
         private void OnDestroy()
         {
-            GameEvents.onGameSceneLoadRequested.Remove(onGameSceneLoadRequested);
-            GameEvents.onGameSceneSwitchRequested.Remove(onGameSceneSwitchRequested);
+            GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneLoadRequested);
+            GameEvents.onGameSceneSwitchRequested.Remove(OnGameSceneSwitchRequested);
 
             if (_window != null) _window.Dispose();
             if (_toolbarControl != null)
