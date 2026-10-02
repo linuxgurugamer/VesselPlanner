@@ -10,8 +10,6 @@
     <LangVersion>7.3</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-    <KSP_ROOT Condition="'$(KSP_ROOT)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</KSP_ROOT>
-    <KSP_MANAGED>$(KSP_ROOT)\KSP_x64_Data\Managed</KSP_MANAGED>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -99,16 +97,7 @@
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
-  <Target Name="CopyToGameData" AfterTargets="Build" Condition="'$(CopyToKSP)' == 'true'">
-    <MakeDir Directories="$(KSP_ROOT)\GameData\VesselPlanner\Plugins" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner\Plugins" />
-    <MakeDir Directories="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\Textures" />
-    <Copy SourceFiles="$(ProjectDir)PluginData\Textures\icon_38.png;$(ProjectDir)PluginData\Textures\icon_24.png" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\Textures" />
-    <Copy SourceFiles="$(SolutionDir)VesselPlanner.version" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner" />
-    <MakeDir Directories="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\DeltaVTables" />
-    <Copy SourceFiles="@(DeltaVTableFile)" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner\PluginData\DeltaVTables" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(SolutionDir)GameData\VesselPlanner\BulkheadProfiles.cfg;$(SolutionDir)GameData\VesselPlanner\decouplerMasses.cfg" DestinationFolder="$(KSP_ROOT)\GameData\VesselPlanner" />
-  </Target>
+
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>"$(DevEnvDir)\texttransform.exe" "$(ProjectDir)AssemblyVersion.tt"</PreBuildEvent>
