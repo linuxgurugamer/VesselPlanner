@@ -46,6 +46,11 @@ namespace VesselPlanner.UI
         private double _plannedStageDecouplerMassTons;
         private double _plannedStageAssemblyMassTons;
         private string _maxEngines = "8";
+        private string _maxTankTypes = "3";
+        private string _maxTanksInSet = "0";
+        private const float TankComponentLineHeight = 40f;
+        private const float TankComponentThumbnailSize = 32f;
+        private const float TankSetActionHeight = 28f;
         private string _tankRatio = "0.125";
         private bool _useCraftPayload = true;
         private bool _includeSolid;
@@ -82,18 +87,25 @@ namespace VesselPlanner.UI
         private readonly List<CelestialBody> _bodies = new List<CelestialBody>();
         private int _selectedBodyIndex;
         private double _altitudeMeters;
+        private float _lastPlanningAltitudeRecalculateTime = -1f;
+        private bool _planningAltitudeRecalculatePending;
+        private const float PlanningAltitudeRecalculateInterval = 1f;
         private Rect _stageByStageButtonWindowRect;
         private const float PlanetButtonWidth = 180f;
         private const float MinWindowWidth = 1150f;
         private const float MaxWindowWidth = 1850f;
         private const float MinWindowHeight = 620f;
+        private const float CurrentEngineNameColumnWidth = 98f;
+        private const float CurrentEngineThumbnailSize = 28f;
+        private const float CurrentEngineMinRowHeight = 32f;
+        private const float CurrentEngineRowVerticalPadding = 6f;
         private const float MinEngineListHeight = 150f;
         private const float MaxEngineListHeight = 300f;
 
         // Selected Engine / Tanks pane sizing.  The pane widths are draggable and are
         // stored as a fraction of the available detail width so the layout keeps its
-        // proportions when the planner window itself is resized.  The detail list
-        // heights are fixed, so neither pane carries a bottom grip.
+        // proportions when the planner window itself is resized.  In Planning the lower
+        // pane row also expands into otherwise-unused screen space below the window.
         private PaneSplitter _activeSplitter = PaneSplitter.None;
         private PaneSplitter _pendingSplitterTarget = PaneSplitter.None;
         private Vector2 _pendingSplitterDelta;
@@ -127,7 +139,10 @@ namespace VesselPlanner.UI
         private float _planningEngineScrollHeight = TankListScrollHeightPx;
         private float _measuredPlanningEnginePaneHeight;
         private float _measuredPlanningTankPaneHeight;
+        private float _measuredPlanningTankPaneTop;
+        private float _planningBottomPaneExpansion;
         private float _planningPaneRowHeight;
+        private const float PlanningBottomScreenMargin = 4f;
 
         // Analyze Existing lines up the bottom of the Selected Engine pane with the bottom
         // of the Existing stage box.  That box's height depends on which analysis lines and
@@ -245,6 +260,9 @@ namespace VesselPlanner.UI
             private float _analysisListHeightOffset;
             private float _planningListHeightOffset;
             private float _mainWindowWidth = 1150f;
+            private bool _analysisSimulationEnvironmentCollapsed;
+            private bool _analysisExistingStageCollapsed;
+            private bool _analysisCurrentEnginesCollapsed;
             private bool _saveEngineFilter = true;
             private bool _saveEngineExcludeFilter = true;
             private bool _saveTankFilter = true;
@@ -365,6 +383,24 @@ namespace VesselPlanner.UI
             {
                 get { return _mainWindowWidth; }
                 set { _mainWindowWidth = Mathf.Clamp(value, MinWindowWidth, MaxWindowWidth); }
+            }
+
+            public bool AnalysisSimulationEnvironmentCollapsed
+            {
+                get { return _analysisSimulationEnvironmentCollapsed; }
+                set { _analysisSimulationEnvironmentCollapsed = value; }
+            }
+
+            public bool AnalysisExistingStageCollapsed
+            {
+                get { return _analysisExistingStageCollapsed; }
+                set { _analysisExistingStageCollapsed = value; }
+            }
+
+            public bool AnalysisCurrentEnginesCollapsed
+            {
+                get { return _analysisCurrentEnginesCollapsed; }
+                set { _analysisCurrentEnginesCollapsed = value; }
             }
 
             public bool SaveEngineFilter
@@ -519,6 +555,9 @@ namespace VesselPlanner.UI
                     _analysisListHeightOffset = ReadFloat(settings, "AnalysisListHeightOffset", _analysisListHeightOffset);
                     _planningListHeightOffset = ReadFloat(settings, "PlanningListHeightOffset", _planningListHeightOffset);
                     MainWindowWidth = ReadFloat(settings, "MainWindowWidth", _mainWindowWidth);
+                    _analysisSimulationEnvironmentCollapsed = CommonRoutines.ReadBool(settings, "AnalysisSimulationEnvironmentCollapsed", false);
+                    _analysisExistingStageCollapsed = CommonRoutines.ReadBool(settings, "AnalysisExistingStageCollapsed", false);
+                    _analysisCurrentEnginesCollapsed = CommonRoutines.ReadBool(settings, "AnalysisCurrentEnginesCollapsed", false);
                     IconZoomFactor = ReadFloat(settings, "IconZoomFactor", _iconZoomFactor);
                     RotatingImageZoomFactor = ReadFloat(settings, "RotatingImageZoomFactor", _rotatingImageZoomFactor);
                     CameraYawDegrees = ReadFloat(settings, "CameraYawDegrees", _cameraYawDegrees);
@@ -578,6 +617,9 @@ namespace VesselPlanner.UI
                     settings.SetValue("AnalysisListHeightOffset", _analysisListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("PlanningListHeightOffset", _planningListHeightOffset.ToString("0.##", CultureInfo.InvariantCulture), true);
                     settings.SetValue("MainWindowWidth", _mainWindowWidth.ToString("0.##", CultureInfo.InvariantCulture), true);
+                    settings.SetValue("AnalysisSimulationEnvironmentCollapsed", _analysisSimulationEnvironmentCollapsed, true);
+                    settings.SetValue("AnalysisExistingStageCollapsed", _analysisExistingStageCollapsed, true);
+                    settings.SetValue("AnalysisCurrentEnginesCollapsed", _analysisCurrentEnginesCollapsed, true);
                     settings.SetValue("IconZoomFactor", _iconZoomFactor.ToString("0.###", CultureInfo.InvariantCulture), true);
                     settings.SetValue("RotatingImageZoomFactor", _rotatingImageZoomFactor.ToString("0.###", CultureInfo.InvariantCulture), true);
                     settings.SetValue("CameraYawDegrees", _cameraYawDegrees.ToString("0.###", CultureInfo.InvariantCulture), true);
@@ -683,6 +725,7 @@ namespace VesselPlanner.UI
                 ApplyPendingMainWindowWidthResize();
                 RunQueuedAnalyzeSimulation();
                 MatchPlanningResultsHeight();
+                ExpandPlanningBottomPanesToScreen();
                 MatchPlanningPaneHeights();
                 MatchAnalysisColumnHeights();
                 ClampWindow();
@@ -803,7 +846,10 @@ namespace VesselPlanner.UI
                 if (GUILayout.Button("Refresh", GUILayout.Width(80)))
                 {
                     RefreshDatabases();
-                    RefreshStage();
+                    // Calculate/SimulateExisting now take their own fresh stage snapshot so
+                    // Refresh and the normal calculation buttons use the same input path.
+                    // Do not pre-scan here: doing so made Refresh materially different from
+                    // Calculate and could also overwrite a user-entered planning tank ratio.
                     if (_deltaVTableMode) DeltaVTable.Reload();
                     RecalculateForFilterChange();
                 }
@@ -1214,138 +1260,170 @@ namespace VesselPlanner.UI
             if (_snapshot == null) RefreshStage();
             using (new GUILayout.HorizontalScope())
             {
-
-                // Keep the controls that drive the replacement-engine simulation together in
-                // their own pane at the top of the Analyze Existing left column.  Stage
-                // diagnostics can grow substantially, so putting the simulation controls first
-                // keeps the controls and Simulate button immediately accessible.
+                // Keep the controls and diagnostics in the left column.  Each major section
+                // can be collapsed independently so users can trade diagnostic detail for
+                // more vertical room without changing which analysis lines are enabled.
                 GUILayout.BeginVertical(GUILayout.Width(350));
+
                 GUILayout.BeginVertical("box");
-                GUILayout.Label("Simulation environment");
-                Field("Minimum TWR", ref _minTwr);
-                Row("TWR gravity", F(GetSelectedTwrGravity()) + " m/s² (surface)");
-                Field("Max engines", ref _maxEngines);
-                bool analysisFilterChanged = false;
-                analysisFilterChanged |= ToggleChanged(ref _ignoreMonoprop, "Ignore monopropellant");
-                analysisFilterChanged |= ToggleChanged(ref _includeSolid, "Include solid fuel");
-                analysisFilterChanged |= ToggleChanged(ref _includeAir, "Include air-breathing");
-                analysisFilterChanged |= ToggleChanged(ref _includeElectric, "Include electric-propellant");
-                if (analysisFilterChanged) RecalculateForFilterChange();
-                if (GUILayout.Button("Simulate all engines", GUILayout.Height(30))) SimulateExisting();
-                GUILayout.Label(_status);
+                if (DrawAnalysisSectionHeader("Simulation environment", _uiSettings.AnalysisSimulationEnvironmentCollapsed))
+                {
+                    _uiSettings.AnalysisSimulationEnvironmentCollapsed = !_uiSettings.AnalysisSimulationEnvironmentCollapsed;
+                    _uiSettings.Save();
+                }
+                if (!_uiSettings.AnalysisSimulationEnvironmentCollapsed)
+                {
+                    Field("Minimum TWR", ref _minTwr);
+                    Row("TWR gravity (surface)", F(GetSelectedTwrGravity()) + " m/s²");
+                    Field("Max engines", ref _maxEngines);
+                    bool analysisFilterChanged = false;
+                    analysisFilterChanged |= ToggleChanged(ref _ignoreMonoprop, "Ignore monopropellant");
+                    analysisFilterChanged |= ToggleChanged(ref _includeSolid, "Include solid fuel");
+                    analysisFilterChanged |= ToggleChanged(ref _includeAir, "Include air-breathing");
+                    analysisFilterChanged |= ToggleChanged(ref _includeElectric, "Include electric-propellant");
+                    if (analysisFilterChanged) RecalculateForFilterChange();
+                    if (GUILayout.Button("Simulate all engines", GUILayout.Height(30))) SimulateExisting();
+                    GUILayout.Label(_status);
+                }
                 GUILayout.EndVertical();
 
                 GUILayout.Space(4);
 
                 GUILayout.BeginVertical("box");
-                GUILayout.Label("Existing stage");
-                // The stage diagnostics grow with the number of enabled lines, engines, and
-                // stage resources, and the window is sized by its content, so the pane is given
-                // a fixed viewport and scrolls instead of stretching the window. The height is
-                // taken from the screen rather than the window: the window height is a result
-                // of this pane's size, so reading it here would let the two grow off each other.
-                _analysisStageScroll = GUILayout.BeginScrollView(_analysisStageScroll, GUILayout.Height(AnalysisStageScrollHeight()));
-                AnalysisRow(AnalysisLine.CraftWetMass, "Craft wet mass", F(_snapshot.VesselWetMassTons) + " t");
-                AnalysisRow(AnalysisLine.CraftDryMass, "Craft dry mass", F(_snapshot.VesselDryMassTons) + " t");
-                AnalysisRow(AnalysisLine.PayloadAboveStage, "Payload above stage", F(_snapshot.PayloadAboveStageMassTons) + " t");
-                AnalysisRow(AnalysisLine.StagePropellantCurrent, "Stage propellant (current)", F(_snapshot.StagePropellantMassTons) + " t");
-                AnalysisRow(AnalysisLine.StagePropellantFull, "Stage propellant (full)", F(_snapshot.StagePropellantCapacityMassTons) + " t");
-                if (_snapshot.HasStockStageMasses)
+                if (DrawAnalysisSectionHeader("Existing stage", _uiSettings.AnalysisExistingStageCollapsed))
                 {
-                    AnalysisRow(AnalysisLine.KspStageWetMass, "KSP stage wet mass", F(_snapshot.StockStageMassTons) + " t");
-                    AnalysisRow(AnalysisLine.KspStageDryMass, "KSP stage dry mass", F(_snapshot.StockStageDryMassTons) + " t");
-                    AnalysisRow(AnalysisLine.KspStageFuelMass, "KSP stage fuel mass", F(_snapshot.StockStageFuelMassTons) + " t");
-                    AnalysisRow(AnalysisLine.KspCurrentEngineMass, "KSP current engine mass", F(_snapshot.StockCurrentEngineMassTons > 0.0 ? _snapshot.StockCurrentEngineMassTons : _snapshot.CurrentEngineMassTons) + " t");
-                    AnalysisRow(AnalysisLine.KspVehicleStartMass, "KSP vehicle start mass", F(_snapshot.StockStageStartMassTons) + " t");
-                    AnalysisRow(AnalysisLine.KspVehicleEndMass, "KSP vehicle end mass", F(_snapshot.StockStageEndMassTons) + " t");
-                    if (_snapshot.StockStageBurnTimeSeconds > 0.0)
-                        AnalysisRow(AnalysisLine.KspCurrentBurn, "KSP current burn", _snapshot.StockStageBurnTimeSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s");
+                    _uiSettings.AnalysisExistingStageCollapsed = !_uiSettings.AnalysisExistingStageCollapsed;
+                    _uiSettings.Save();
                 }
-                AnalysisRow(AnalysisLine.StageTankCapacity, "Stage tank capacity", F(_snapshot.StageTankCapacityUnits) + " units");
-                AnalysisRow(AnalysisLine.KnownTankVolume, "Known tank volume", _snapshot.StageTankVolumeLiters > 0 ? F(_snapshot.StageTankVolumeLiters) + " L" : "n/a");
+                if (!_uiSettings.AnalysisExistingStageCollapsed)
+                {
+                    // The stage diagnostics grow with the number of enabled lines and stage
+                    // resources, so the expanded section has a fixed viewport and scrolls.
+                    _analysisStageScroll = GUILayout.BeginScrollView(_analysisStageScroll, GUILayout.Height(AnalysisStageScrollHeight()));
+                    AnalysisRow(AnalysisLine.CraftWetMass, "Craft wet mass", F(_snapshot.VesselWetMassTons) + " t");
+                    AnalysisRow(AnalysisLine.CraftDryMass, "Craft dry mass", F(_snapshot.VesselDryMassTons) + " t");
+                    AnalysisRow(AnalysisLine.PayloadAboveStage, "Payload above stage", F(_snapshot.PayloadAboveStageMassTons) + " t");
+                    AnalysisRow(AnalysisLine.StagePropellantCurrent, "Stage propellant (current)", F(_snapshot.StagePropellantMassTons) + " t");
+                    AnalysisRow(AnalysisLine.StagePropellantFull, "Stage propellant (full)", F(_snapshot.StagePropellantCapacityMassTons) + " t");
+                    if (_snapshot.HasStockStageMasses)
+                    {
+                        AnalysisRow(AnalysisLine.KspStageWetMass, "KSP stage wet mass", F(_snapshot.StockStageMassTons) + " t");
+                        AnalysisRow(AnalysisLine.KspStageDryMass, "KSP stage dry mass", F(_snapshot.StockStageDryMassTons) + " t");
+                        AnalysisRow(AnalysisLine.KspStageFuelMass, "KSP stage fuel mass", F(_snapshot.StockStageFuelMassTons) + " t");
+                        AnalysisRow(AnalysisLine.KspCurrentEngineMass, "KSP current engine mass", F(_snapshot.StockCurrentEngineMassTons > 0.0 ? _snapshot.StockCurrentEngineMassTons : _snapshot.CurrentEngineMassTons) + " t");
+                        AnalysisRow(AnalysisLine.KspVehicleStartMass, "KSP vehicle start mass", F(_snapshot.StockStageStartMassTons) + " t");
+                        AnalysisRow(AnalysisLine.KspVehicleEndMass, "KSP vehicle end mass", F(_snapshot.StockStageEndMassTons) + " t");
+                        if (_snapshot.StockStageBurnTimeSeconds > 0.0)
+                            AnalysisRow(AnalysisLine.KspCurrentBurn, "KSP current burn", _snapshot.StockStageBurnTimeSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s");
+                    }
+                    AnalysisRow(AnalysisLine.StageTankCapacity, "Stage tank capacity", F(_snapshot.StageTankCapacityUnits) + " units");
+                    AnalysisRow(AnalysisLine.KnownTankVolume, "Known tank volume", _snapshot.StageTankVolumeLiters > 0 ? F(_snapshot.StageTankVolumeLiters) + " L" : "n/a");
 
+                    if (_uiSettings.AnalysisLineVisible(AnalysisLine.StageResources))
+                    {
+                        GUILayout.Space(4);
+                        GUILayout.Label("Stage Resources");
+                        foreach (var r in _snapshot.Resources)
+                            GUILayout.Label("  " + r.Name + ": " + F(r.Capacity) + " units capacity");
+                    }
+                    GUILayout.EndScrollView();
+                }
+                GUILayout.EndVertical();
+
+                // Current Engines is its own section, not part of Existing Stage.  Keeping it
+                // separate makes its larger viewport fully visible and lets it be collapsed
+                // independently when the user needs room for the other Analyze Existing panes.
                 if (_uiSettings.AnalysisLineVisible(AnalysisLine.CurrentEngines))
                 {
                     GUILayout.Space(4);
-                    GUILayout.Label("Current engines");
-                    // The engine list sits in a darker box so it reads as a table rather than
-                    // as more of the Existing stage rows above it.
-                    GUILayout.BeginVertical(_darkBox);
-                    if (_snapshot.CurrentEngineDetails.Count == 0)
+                    GUILayout.BeginVertical("box");
+                    if (DrawAnalysisSectionHeader("Current engines", _uiSettings.AnalysisCurrentEnginesCollapsed))
                     {
-                        GUILayout.Label("  none found");
+                        _uiSettings.AnalysisCurrentEnginesCollapsed = !_uiSettings.AnalysisCurrentEnginesCollapsed;
+                        _uiSettings.Save();
                     }
-                    else
+                    if (!_uiSettings.AnalysisCurrentEnginesCollapsed)
                     {
-                        // The column header stays put while the engine rows scroll beneath it.
-                        // Columns are narrower than the pane's other rows to leave room for the
-                        // two scrollbars this list now sits inside.
-                        using (new GUILayout.HorizontalScope())
+                        GUILayout.BeginVertical(_darkBox);
+                        if (_snapshot.CurrentEngineDetails.Count == 0)
                         {
-                            GUILayout.Label("Engine", GUILayout.Width(130));
-                            GUILayout.Label("ASL kN", GUILayout.Width(58));
-                            GUILayout.Label("Vac kN", GUILayout.Width(58));
-                            GUILayout.Label("Isp ASL/Vac", GUILayout.Width(68));
+                            GUILayout.Label("  none found");
                         }
-                        _currentEnginesScroll = GUILayout.BeginScrollView(_currentEnginesScroll, GUILayout.Height(CurrentEnginesScrollHeight()));
-                        foreach (ExistingEngineInfo engine in _snapshot.CurrentEngineDetails)
+                        else
                         {
+                            // Keep the headings horizontally synchronized with the engine rows.
+                            // The header's scrollbars are hidden; the body owns the visible bars.
+                            Vector2 currentEnginesHeaderScroll = new Vector2(_currentEnginesScroll.x, 0f);
+                            currentEnginesHeaderScroll = GUILayout.BeginScrollView(
+                                currentEnginesHeaderScroll,
+                                false, false,
+                                GUIStyle.none, GUIStyle.none,
+                                GUILayout.Height(24f));
                             using (new GUILayout.HorizontalScope())
                             {
-                                using (new GUILayout.HorizontalScope(GUILayout.Width(130f), GUILayout.Height(28f)))
-                                {
-                                    DrawPartThumbnail(engine.PartName, engine.PartUrl, 28f);
-                                    GUILayout.Label(engine.DisplayName, GUILayout.Width(98f), GUILayout.Height(28f));
-                                }
-                                GUILayout.Label(F(engine.SeaLevelThrustKn), GUILayout.Width(58));
-                                GUILayout.Label(F(engine.VacuumThrustKn), GUILayout.Width(58));
-                                GUILayout.Label(engine.SeaLevelIsp.ToString("0") + "/" + engine.VacuumIsp.ToString("0"), GUILayout.Width(68));
+                                GUILayout.Label("Engine", GUILayout.Width(130));
+                                GUILayout.Label("ASL kN", GUILayout.Width(58));
+                                GUILayout.Label("Vac kN", GUILayout.Width(58));
+                                GUILayout.Label("Isp ASL/Vac", GUILayout.Width(68));
                             }
+                            GUILayout.EndScrollView();
+                            _currentEnginesScroll.x = currentEnginesHeaderScroll.x;
+
+                            float currentEngineRowHeight = CurrentEngineRowHeight();
+                            _currentEnginesScroll = GUILayout.BeginScrollView(_currentEnginesScroll, GUILayout.Height(CurrentEnginesScrollHeight(currentEngineRowHeight)));
+                            foreach (ExistingEngineInfo engine in _snapshot.CurrentEngineDetails)
+                            {
+                                using (new GUILayout.HorizontalScope(GUILayout.Height(currentEngineRowHeight)))
+                                {
+                                    using (new GUILayout.HorizontalScope(GUILayout.Width(130f), GUILayout.Height(currentEngineRowHeight)))
+                                    {
+                                        DrawPartThumbnail(engine.PartName, engine.PartUrl, CurrentEngineThumbnailSize);
+                                        GUILayout.Label(engine.DisplayName, GUILayout.Width(CurrentEngineNameColumnWidth), GUILayout.Height(currentEngineRowHeight));
+                                    }
+                                    GUILayout.Label(F(engine.SeaLevelThrustKn), GUILayout.Width(58), GUILayout.Height(currentEngineRowHeight));
+                                    GUILayout.Label(F(engine.VacuumThrustKn), GUILayout.Width(58), GUILayout.Height(currentEngineRowHeight));
+                                    GUILayout.Label(engine.SeaLevelIsp.ToString("0") + "/" + engine.VacuumIsp.ToString("0"), GUILayout.Width(68), GUILayout.Height(currentEngineRowHeight));
+                                }
+                            }
+                            GUILayout.EndScrollView();
                         }
-                        GUILayout.EndScrollView();
+                        GUILayout.EndVertical();
                     }
                     GUILayout.EndVertical();
                 }
 
-                if (_uiSettings.AnalysisLineVisible(AnalysisLine.StageResources))
-                {
-                    GUILayout.Space(4);
-                    GUILayout.Label("Stage Resources");
-                    foreach (var r in _snapshot.Resources)
-                        GUILayout.Label("  " + r.Name + ": " + F(r.Capacity) + " units capacity");
-                }
-                GUILayout.EndScrollView();
                 GUILayout.EndVertical();
-                // Measure the Existing stage box itself, not the column group that wraps it.
-                // A layout group's rect can extend past its last child by that child's margin,
-                // which left the Selected Engine pane sitting roughly half a line low.  Both
-                // measured rects are now "box" groups, so their bottom edges are comparable.
+                // Measure the whole left Analyze Existing column so collapse state and the
+                // independent Current Engines section are included in pane-height matching.
                 if (Event.current != null && Event.current.type == EventType.Repaint)
                     _measuredAnalysisLeftColumnBottom = GUILayoutUtility.GetLastRect().yMax;
-                GUILayout.EndVertical();
 
-                // Keep the candidate list and the selected replacement-engine details in
-                // the right-hand column.  This makes the selected engine a continuation of
-                // the engine list instead of a full-width pane below both columns.
+                // Keep the candidate list and selected replacement-engine details in the
+                // right-hand column.
                 GUILayout.BeginVertical();
                 GUILayout.BeginVertical("box");
                 DrawResults();
                 GUILayout.EndVertical();
                 if (_selected != null)
                 {
-                    // Dragging this grip moves the boundary between the candidate list and the
-                    // Selected Engine pane.  Only the list height is stored: the pane re-levels
-                    // itself against the Existing stage box, so the column bottom stays put and
-                    // the drag simply redistributes the height between the two.
                     SplitterGrip(PaneSplitter.AnalysisListHeight, false, GUILayout.ExpandWidth(true), GUILayout.Height(SplitterGripThickness));
-                    // The pane has no width grip of its own here; it simply fills the
-                    // right-hand column beneath the candidate engine list.
                     DrawSelectedEnginePane(false);
                     if (Event.current != null && Event.current.type == EventType.Repaint)
                         _measuredAnalysisPaneBottom = GUILayoutUtility.GetLastRect().yMax;
                 }
                 GUILayout.EndVertical();
             }
+        }
+
+        private static bool DrawAnalysisSectionHeader(string title, bool collapsed)
+        {
+            bool clicked = false;
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label(title, GUILayout.ExpandWidth(true));
+                clicked = GUILayout.Button(collapsed ? "+" : "-", GUILayout.Width(24f), GUILayout.Height(20f));
+            }
+            return clicked;
         }
 
         private void DrawPlanning()
@@ -1395,8 +1473,11 @@ namespace VesselPlanner.UI
                     if (_plannedStageDecouplerMassTons > 0.0)
                         Row("Decoupler mass", F(_plannedStageDecouplerMassTons) + " t");
                 }
-                Row("TWR gravity", F(GetSelectedTwrGravity()) + " m/s² (surface)");
+                Row("TWR gravity (surface)", F(GetSelectedTwrGravity()) + " m/s²");
                 Field("Max engines", ref _maxEngines);
+                Field("Max different tank types", ref _maxTankTypes);
+                Field("Max tanks in set", ref _maxTanksInSet);
+                GUILayout.Label("Tank type combinations are limited to 1-3 different tank types. Max tanks in set limits the total tank count; 0 means no total-count limit.");
                 Field("Tank dry/fuel mass ratio", ref _tankRatio);
 
                 GUILayout.Space(4);
@@ -1451,7 +1532,8 @@ namespace VesselPlanner.UI
                 // candidate engine list follows Requirements because it is aligned to the
                 // bottom of that box, and the Selected Engine pane follows the Tanks pane it
                 // is matched to. The drag stops where either pane would hit its limit, so the
-                // window never has to grow to take the difference.
+                // upper/lower split stays balanced; any additional lower-pane growth comes
+                // from the separate screen-bottom expansion allowance.
                 SplitterGrip(PaneSplitter.PlanningListHeight, false, GUILayout.ExpandWidth(true), GUILayout.Height(SplitterGripThickness));
                 using (new GUILayout.HorizontalScope())
                 {
@@ -1469,7 +1551,9 @@ namespace VesselPlanner.UI
                     DrawTankSuggestionsPane(GUILayout.Width(tankPaneWidth));
                     if (Event.current != null && Event.current.type == EventType.Repaint)
                     {
-                        _measuredPlanningTankPaneHeight = GUILayoutUtility.GetLastRect().height;
+                        Rect tankPaneRect = GUILayoutUtility.GetLastRect();
+                        _measuredPlanningTankPaneTop = tankPaneRect.yMin;
+                        _measuredPlanningTankPaneHeight = tankPaneRect.height;
                         _planningPaneRowHeight = _measuredPlanningTankPaneHeight;
                     }
                 }
@@ -2079,15 +2163,17 @@ namespace VesselPlanner.UI
                 GUILayout.Label(selectedEngineHeader);
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Add Engine", GUILayout.Width(110))) SpawnEngine(_selected);
-                // Only meaningful while a stage-by-stage stage is open: it fills that stage with
-                // the engine and the tank the suggestions currently recommend in one press.
-                // A stage must be open and a tank suggestion must be explicitly selected before
-                // the combined add operation can run. This prevents the first row from being used
-                // implicitly when the user has not chosen a tank.
-                bool previousEnabled = GUI.enabled;
-                GUI.enabled = previousEnabled && StagePlan.IsCapturing && _selectedTank != null;
-                if (GUILayout.Button("Add Engine & Tanks", GUILayout.Width(150))) AddEngineAndTanksToPlan();
-                GUI.enabled = previousEnabled;
+                // Keep the combined stage-building shortcut off the normal Planning page.
+                // Planning already exposes Add Engine plus the tank/set actions, and showing a
+                // disabled combined button there is confusing. The non-compact Analyze Existing
+                // pane keeps the shortcut for Stage-By-Stage capture.
+                if (!compact)
+                {
+                    bool previousEnabled = GUI.enabled;
+                    GUI.enabled = previousEnabled && StagePlan.IsCapturing && _selectedTank != null;
+                    if (GUILayout.Button("Add Engine & Tanks", GUILayout.Width(150))) AddEngineAndTanksToPlan();
+                    GUI.enabled = previousEnabled;
+                }
             }
 
             if (_selectedTank != null)
@@ -2194,7 +2280,14 @@ namespace VesselPlanner.UI
 
             if (_tankSuggestions.Count == 0)
             {
-                GUILayout.Label("No compatible one-, two-, or three-type tank set can provide all required engine resources.");
+                int maxTankTypes = MaxDifferentTankTypesToConsider();
+                int maxTanksInSet = MaxTanksInSetToConsider();
+                string totalLimit = maxTanksInSet == int.MaxValue
+                    ? " with no total tank-count limit"
+                    : " and up to " + maxTanksInSet.ToString(CultureInfo.InvariantCulture) + " total tanks";
+                GUILayout.Label("No compatible tank set using up to " + maxTankTypes.ToString(CultureInfo.InvariantCulture) +
+                    (maxTankTypes == 1 ? " different tank type" : " different tank types") +
+                    totalLimit + " can provide all required engine resources.");
                 return;
             }
 
@@ -2230,24 +2323,53 @@ namespace VesselPlanner.UI
                 Header("", addWidth);
             }
             _tankScroll = GUILayout.BeginScrollView(_tankScroll, GUILayout.Height(TankListScrollHeight()));
-            foreach (TankSuggestion t in visibleTanks)
+            for (int tankIndex = 0; tankIndex < visibleTanks.Count; tankIndex++)
             {
+                TankSuggestion t = visibleTanks[tankIndex];
                 bool selected = ReferenceEquals(t, _selectedTank);
+                float rowHeight = TankSuggestionRowHeight(t);
                 if (selected) GUILayout.BeginHorizontal("box"); else GUILayout.BeginHorizontal();
                 TankSelectionCellWithThumbnails(t, tankNameWidth);
-                TankSelectionCell(t, t.Count.ToString(), countWidth);
-                TankSelectionCell(t, F(t.TotalDryMassTons), dryMassWidth);
-                TankSelectionCell(t, (t.ExcessFraction * 100.0).ToString("0.0") + "%", excessWidth);
-                TankSelectionCell(t, TankSuggestionBulkheadLabel(t), bulkheadWidth);
-                TankSelectionCell(t, t.CapacitySummary, capacityWidth);
-                string addLabel = StagePlan.IsCapturing
-                    ? "Add to Stage"
-                    : (t.DifferentTankTypes > 1 ? "Add Set" : "Add Tank");
-                if (GUILayout.Button(addLabel, GUILayout.Width(addWidth))) SpawnTank(t);
+                TankSelectionCell(t, t.Count.ToString(), countWidth, rowHeight);
+                TankSelectionCell(t, F(t.TotalDryMassTons), dryMassWidth, rowHeight);
+                TankSelectionCell(t, (t.ExcessFraction * 100.0).ToString("0.0") + "%", excessWidth, rowHeight);
+                TankSelectionCell(t, TankSuggestionBulkheadLabel(t), bulkheadWidth, rowHeight);
+                TankSelectionCell(t, t.CapacitySummary, capacityWidth, rowHeight);
+                DrawTankActionCell(t, addWidth, rowHeight);
                 GUILayout.EndHorizontal();
+
+                if (tankIndex < visibleTanks.Count - 1)
+                    DrawTankSetSeparator();
             }
             GUILayout.EndScrollView();
-            GUILayout.Label("Tank sets may use up to three different tank types, all with the same bulkhead profile. # is the total number of tanks. In Stage-By-Stage, Add Engine & Tanks captures the complete selected set.");
+            GUILayout.Label("Tank sets honor both Requirements limits: maximum different tank types and maximum total tanks in the set (0 = unlimited). All tank types share the same bulkhead profile. Mixed sets show each tank type on its own taller line with its own Add Tank button. While Stage-By-Stage is capturing, Add to Stage records the complete set. # is the total number of tanks.");
+        }
+
+        private static void DrawTankSetSeparator()
+        {
+            Rect separator = GUILayoutUtility.GetRect(1f, 1f, GUILayout.ExpandWidth(true), GUILayout.Height(1f));
+            if (Event.current == null || Event.current.type != EventType.Repaint) return;
+
+            Color oldColor = GUI.color;
+            Color lineColor = GUI.skin.label.normal.textColor;
+            lineColor.a = 0.45f;
+            GUI.color = lineColor;
+            GUI.DrawTexture(separator, Texture2D.whiteTexture);
+            GUI.color = oldColor;
+        }
+
+        private int MaxDifferentTankTypesToConsider()
+        {
+            int value;
+            if (!int.TryParse(_maxTankTypes, out value)) return 3;
+            return Math.Max(1, Math.Min(3, value));
+        }
+
+        private int MaxTanksInSetToConsider()
+        {
+            int value;
+            if (!int.TryParse(_maxTanksInSet, out value) || value <= 0) return int.MaxValue;
+            return value;
         }
 
         private void TankSelectionCellWithThumbnails(TankSuggestion tank, float width)
@@ -2259,24 +2381,88 @@ namespace VesselPlanner.UI
                 .Take(3)
                 .ToList();
 
-            const float thumbnailSize = 28f;
-            float textWidth = Mathf.Max(50f, width - (parts.Count * thumbnailSize) - 6f);
+            float thumbnailSize = TankComponentThumbnailSize;
+            float textWidth = Mathf.Max(50f, width - thumbnailSize - 6f);
             bool selected = false;
-            using (new GUILayout.HorizontalScope(GUILayout.Width(width), GUILayout.Height(thumbnailSize)))
+
+            // Mixed tank sets are deliberately shown one tank type per line.  This keeps
+            // each thumbnail next to its own quantity/description instead of packing all
+            // thumbnails beside one combined "Tank A + Tank B + Tank C" summary.
+            using (new GUILayout.VerticalScope(GUILayout.Width(width)))
             {
                 foreach (TankSuggestionPart item in parts)
-                    DrawPartThumbnail(item.Tank.PartName, item.Tank.PartUrl, thumbnailSize);
-
-                selected = GUILayout.Button(
-                    new GUIContent(tank.TankSummary, tank.TankSummary),
-                    GUI.skin.label,
-                    GUILayout.Width(textWidth),
-                    GUILayout.Height(thumbnailSize));
+                {
+                    string description = TankSuggestionPartDescription(item);
+                    using (new GUILayout.HorizontalScope(GUILayout.Width(width), GUILayout.Height(TankComponentLineHeight)))
+                    {
+                        DrawPartThumbnail(item.Tank.PartName, item.Tank.PartUrl, thumbnailSize);
+                        if (GUILayout.Button(
+                            new GUIContent(description, description),
+                            GUI.skin.label,
+                            GUILayout.Width(textWidth),
+                            GUILayout.Height(TankComponentLineHeight)))
+                            selected = true;
+                    }
+                }
             }
 
             if (!selected) return;
             _selectedTank = tank;
             _status = "Selected tanks: " + tank.TankSummary + ".";
+        }
+
+        private static string TankSuggestionPartDescription(TankSuggestionPart item)
+        {
+            if (item == null || item.Tank == null) return string.Empty;
+            string name = string.IsNullOrEmpty(item.Tank.DisplayName)
+                ? item.Tank.PartName
+                : item.Tank.DisplayName;
+            return Math.Max(0, item.Count).ToString() + "x " + (name ?? string.Empty);
+        }
+
+        private float TankSuggestionRowHeight(TankSuggestion tank)
+        {
+            if (tank == null) return TankComponentLineHeight;
+            int lines = tank.Tanks == null
+                ? 1
+                : tank.Tanks.Count(item => item != null && item.Tank != null && item.Count > 0);
+            lines = Math.Min(3, Math.Max(1, lines));
+            return lines * TankComponentLineHeight + (lines > 1 && StagePlan.IsCapturing ? TankSetActionHeight : 0f);
+        }
+
+        private void DrawTankActionCell(TankSuggestion tank, float width, float rowHeight)
+        {
+            if (tank == null) return;
+
+            List<TankSuggestionPart> parts = tank.Tanks
+                .Where(item => item != null && item.Tank != null && item.Count > 0)
+                .Take(3)
+                .ToList();
+
+            using (new GUILayout.VerticalScope(GUILayout.Width(width), GUILayout.Height(rowHeight)))
+            {
+                if (parts.Count <= 1)
+                {
+                    string label = StagePlan.IsCapturing ? "Add to Stage" : "Add Tank";
+                    if (GUILayout.Button(label, GUILayout.Width(width), GUILayout.Height(TankComponentLineHeight)))
+                        SpawnTank(tank);
+                    return;
+                }
+
+                foreach (TankSuggestionPart item in parts)
+                {
+                    string description = TankSuggestionPartDescription(item);
+                    GUIContent addTankContent = new GUIContent("Add Tank", "Add " + description);
+                    if (GUILayout.Button(addTankContent, GUILayout.Width(width), GUILayout.Height(TankComponentLineHeight)))
+                        SpawnTankPart(item);
+                }
+
+                if (StagePlan.IsCapturing)
+                {
+                    if (GUILayout.Button("Add to Stage", GUILayout.Width(width), GUILayout.Height(TankSetActionHeight)))
+                        SpawnTank(tank);
+                }
+            }
         }
 
         private void DrawPartThumbnail(string partName, float size)
@@ -2338,9 +2524,12 @@ namespace VesselPlanner.UI
                 _hoverPartPreviewTexture, ScaleMode.ScaleToFit, true);
         }
 
-        private void TankSelectionCell(TankSuggestion tank, string text, float width)
+        private void TankSelectionCell(TankSuggestion tank, string text, float width, float height = 0f)
         {
-            if (!GUILayout.Button(text, GUI.skin.label, GUILayout.Width(width))) return;
+            bool clicked = height > 0f
+                ? GUILayout.Button(text, GUI.skin.label, GUILayout.Width(width), GUILayout.Height(height))
+                : GUILayout.Button(text, GUI.skin.label, GUILayout.Width(width));
+            if (!clicked) return;
             _selectedTank = tank;
             _status = "Selected tanks: " + tank.TankSummary + ".";
         }
@@ -2362,7 +2551,7 @@ namespace VesselPlanner.UI
         private void SelectSolution(StageSolution s)
         {
             _selected = s;
-            _tankSuggestions = _planningMode ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected) : new List<TankSuggestion>();
+            _tankSuggestions = _planningMode ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected, MaxDifferentTankTypesToConsider(), MaxTanksInSetToConsider()) : new List<TankSuggestion>();
             _selectedTank = null;
             ApplyTankSort();
         }
@@ -2509,6 +2698,42 @@ namespace VesselPlanner.UI
             }
         }
 
+        private void SpawnTankPart(TankSuggestionPart item)
+        {
+            if (item == null || item.Tank == null || item.Count <= 0) return;
+
+            if (StagePlan.IsCapturing)
+            {
+                bool captured = StagePlan.CapturePart(
+                    item.Tank.PartName,
+                    item.Tank.PartUrl,
+                    item.Tank.DisplayName,
+                    item.Count,
+                    false,
+                    item.Tank.IsSubtype ? item.Tank.IdentityKey : null,
+                    item.Tank.IsSubtype ? item.Tank.WetMassTons : 0.0);
+                if (captured)
+                {
+                    _status = "Added " + TankSuggestionPartDescription(item) + " to " + StagePlan.CapturingStageLabel + ".";
+                    return;
+                }
+            }
+
+            string message;
+            bool spawned = EditorPartSpawner.Spawn(item.Tank.PartName, out message);
+            _status = message;
+            if (spawned && item.Count > 1)
+                _status += " Place " + item.Count.ToString(CultureInfo.InvariantCulture) + " x " +
+                    (string.IsNullOrEmpty(item.Tank.DisplayName) ? item.Tank.PartName : item.Tank.DisplayName) + ".";
+
+            if (spawned && _planningMode && _uiSettings.ClosePlanningAfterAdd)
+            {
+                Visible = false;
+                _settingsVisible = false;
+                CancelStagePartPick(null);
+            }
+        }
+
         private void SpawnTank(TankSuggestion t)
         {
             if (t == null || t.Tanks == null || t.Tanks.Count == 0) return;
@@ -2519,7 +2744,9 @@ namespace VesselPlanner.UI
                 foreach (TankSuggestionPart item in t.Tanks)
                 {
                     if (item == null || item.Tank == null || item.Count <= 0) continue;
-                    capturedAny |= StagePlan.CapturePart(item.Tank.PartName, item.Tank.PartUrl, item.Tank.DisplayName, item.Count, false);
+                    capturedAny |= StagePlan.CapturePart(item.Tank.PartName, item.Tank.PartUrl, item.Tank.DisplayName, item.Count, false,
+                        item.Tank.IsSubtype ? item.Tank.IdentityKey : null,
+                        item.Tank.IsSubtype ? item.Tank.WetMassTons : 0.0);
                 }
                 if (capturedAny)
                 {
@@ -2555,7 +2782,11 @@ namespace VesselPlanner.UI
             int max;
             if (!CommonRoutines.TryParseDouble(_minTwr, out twr) || !int.TryParse(_maxEngines, out max))
             { _status = "Check numeric inputs."; return; }
-            if (_snapshot == null) RefreshStage();
+            // Always simulate against the current editor stage.  Previously this reused
+            // a cached snapshot until the top-right Refresh button was pressed, so the two
+            // actions could produce different candidate lists for identical visible inputs.
+            // Preserve planning-only inputs while refreshing the craft snapshot.
+            RefreshStage(false);
             IEnumerable<EngineCandidate> candidates = _engines;
             if (_ignoreMonoprop)
                 candidates = candidates.Where(e => !e.Propellants.Any(p => string.Equals(p.ResourceName, "MonoPropellant", StringComparison.OrdinalIgnoreCase)));
@@ -2584,10 +2815,20 @@ namespace VesselPlanner.UI
 
             double dv, twr, payload, ratio;
             int max;
-            if (!CommonRoutines.TryParseDouble(_targetDv, out dv) || !CommonRoutines.TryParseDouble(_minTwr, out twr) || !CommonRoutines.TryParseDouble(_payload, out payload) || !CommonRoutines.TryParseDouble(_tankRatio, out ratio) || !int.TryParse(_maxEngines, out max))
+            int maxTankTypes;
+            int maxTanksInSet;
+            if (!CommonRoutines.TryParseDouble(_targetDv, out dv) || !CommonRoutines.TryParseDouble(_minTwr, out twr) || !CommonRoutines.TryParseDouble(_payload, out payload) || !CommonRoutines.TryParseDouble(_tankRatio, out ratio) || !int.TryParse(_maxEngines, out max) || !int.TryParse(_maxTankTypes, out maxTankTypes) || !int.TryParse(_maxTanksInSet, out maxTanksInSet))
             { _status = "Check numeric inputs."; return; }
+            maxTankTypes = Math.Max(1, Math.Min(3, maxTankTypes));
+            _maxTankTypes = maxTankTypes.ToString(CultureInfo.InvariantCulture);
+            if (maxTanksInSet < 0)
+            { _status = "Max tanks in set must be 0 or greater."; return; }
+            _maxTanksInSet = maxTanksInSet.ToString(CultureInfo.InvariantCulture);
 
-            if (_snapshot == null) RefreshStage();
+            // Re-scan the selected editor stage for every calculation.  This makes the
+            // Calculate button and top-right Refresh -> Calculate path deterministic with
+            // respect to craft state while leaving user-entered planning values unchanged.
+            RefreshStage(false);
             double atmospheres, temperatureK, density;
             GetSelectedAtmosphereEnvironment(out atmospheres, out temperatureK, out density);
             var req = new StageRequirements
@@ -2614,7 +2855,7 @@ namespace VesselPlanner.UI
             _solutions = PlannerEngine.Calculate(candidates, req, _mode);
             ApplySolutionSort();
             _selected = _solutions.FirstOrDefault();
-            _tankSuggestions = _selected != null ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected) : new List<TankSuggestion>();
+            _tankSuggestions = _selected != null ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected, maxTankTypes, maxTanksInSet) : new List<TankSuggestion>();
             _selectedTank = null;
             ApplyTankSort();
             _status = _solutions.Count + " valid configurations at " + BodyName(SelectedBody) + " " + FormatAltitude(_altitudeMeters) + "; " + _tankSuggestions.Count + " matching tank choices for the selected result.";
@@ -2771,6 +3012,7 @@ namespace VesselPlanner.UI
                 {
                     body = SelectedBody;
                     _altitudeMeters = Math.Min(_altitudeMeters, GetAtmosphereDepth(body));
+                    _planningAltitudeRecalculatePending = false;
                     RecalculateForEnvironmentChange();
                 }
 
@@ -2801,7 +3043,9 @@ namespace VesselPlanner.UI
             }
 
             if (Math.Abs(oldAltitude - _altitudeMeters) >= 0.5)
-                RecalculateForEnvironmentChange();
+                RecalculateForAltitudeChange();
+
+            FlushPendingPlanningAltitudeRecalculation();
 
             if (body == null || !body.atmosphere)
                 GUILayout.Label("Selected body has no atmosphere; atmospheric Δv equals vacuum Δv.");
@@ -2897,6 +3141,39 @@ namespace VesselPlanner.UI
             RecalculateForFilterChange();
         }
 
+        private void RecalculateForAltitudeChange()
+        {
+            if (!_planningMode)
+            {
+                _planningAltitudeRecalculatePending = false;
+                RecalculateForEnvironmentChange();
+                return;
+            }
+
+            _planningAltitudeRecalculatePending = true;
+            FlushPendingPlanningAltitudeRecalculation();
+        }
+
+        private void FlushPendingPlanningAltitudeRecalculation()
+        {
+            if (!_planningMode)
+            {
+                _planningAltitudeRecalculatePending = false;
+                return;
+            }
+
+            if (!_planningAltitudeRecalculatePending) return;
+
+            float now = Time.realtimeSinceStartup;
+            if (_lastPlanningAltitudeRecalculateTime >= 0f &&
+                now - _lastPlanningAltitudeRecalculateTime < PlanningAltitudeRecalculateInterval)
+                return;
+
+            _planningAltitudeRecalculatePending = false;
+            _lastPlanningAltitudeRecalculateTime = now;
+            RecalculateForEnvironmentChange();
+        }
+
         // The height the candidate engine list is measured against before either mode's
         // offset is applied.  It is taken from the screen and not from the planner window,
         // which is sized by its content: with the window in this expression the list fed its
@@ -2945,30 +3222,101 @@ namespace VesselPlanner.UI
         // up therefore enlarges the Tanks pane, and the Selected Engine list follows because
         // its pane is matched to this one.  In Analyze Existing the engine list is instead
         // sized so its pane ends level with the left diagnostics column.
+        private float PlanningMaxMatchedScrollHeight()
+        {
+            float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
+            return Mathf.Max(MaxMatchedScrollHeight, screenHeight);
+        }
+
         private float TankListScrollHeight()
         {
-            return Mathf.Clamp(TankListScrollHeightPx - PlanningListHeightOffset(), MinMatchedScrollHeight, MaxMatchedScrollHeight);
+            float baseHeight = TankListScrollHeightPx - PlanningListHeightOffset();
+            return Mathf.Clamp(baseHeight + _planningBottomPaneExpansion, MinMatchedScrollHeight, PlanningMaxMatchedScrollHeight());
         }
 
         private float PlanningEngineScrollHeight()
         {
-            return Mathf.Clamp(_planningEngineScrollHeight, MinMatchedScrollHeight, MaxMatchedScrollHeight);
+            return Mathf.Clamp(_planningEngineScrollHeight, MinMatchedScrollHeight, PlanningMaxMatchedScrollHeight());
         }
 
         // Fixed viewport heights for the Analyze Existing left column.  Both are derived
         // from the screen, never from the planner window, because the window is sized by
-        // its content: measuring it here would feed these values their own output.
+        // its content: measuring it here would feed these values their own output.  The
+        // Current Engines list is a sibling of the stage-diagnostics scroll view, so the
+        // two viewports share the available vertical space instead of being nested.
         private static float AnalysisStageScrollHeight()
         {
             float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
-            return Mathf.Clamp(screenHeight * 0.42f, 240f, 520f);
+            return Mathf.Clamp(screenHeight * 0.28f, 200f, 360f);
         }
 
-        private float CurrentEnginesScrollHeight()
+        private float CurrentEngineRowHeight()
+        {
+            if (_snapshot == null || _snapshot.CurrentEngineDetails == null || _snapshot.CurrentEngineDetails.Count == 0)
+                return CurrentEngineMinRowHeight;
+
+            GUIStyle labelStyle = GUI.skin != null ? GUI.skin.label : null;
+            if (labelStyle == null) return CurrentEngineMinRowHeight;
+
+            // Use the widest displayed engine name to establish one uniform row height for
+            // the whole table.  This keeps the numeric columns aligned while still allowing
+            // long part titles to wrap without overlapping the following row.
+            string widestName = string.Empty;
+            float widestNameWidth = 0f;
+            foreach (ExistingEngineInfo engine in _snapshot.CurrentEngineDetails)
+            {
+                string displayName = engine == null ? string.Empty : (engine.DisplayName ?? string.Empty);
+                float width = labelStyle.CalcSize(new GUIContent(displayName)).x;
+                if (width > widestNameWidth)
+                {
+                    widestNameWidth = width;
+                    widestName = displayName;
+                }
+            }
+
+            if (widestNameWidth <= 0f) return CurrentEngineMinRowHeight;
+
+            // CalcHeight follows the active KSP skin's wrapping rules.  The width-based
+            // line estimate is kept as a floor so skins that report a single-line CalcHeight
+            // still reserve enough space for a title wider than the name column.
+            float wrappedHeight = labelStyle.CalcHeight(new GUIContent(widestName), CurrentEngineNameColumnWidth);
+            float singleLineHeight = labelStyle.lineHeight > 0f
+                ? labelStyle.lineHeight
+                : labelStyle.CalcHeight(new GUIContent("Ag"), CurrentEngineNameColumnWidth);
+            if (singleLineHeight <= 0f) singleLineHeight = 16f;
+
+            int widthBasedLines = Mathf.Max(1, Mathf.CeilToInt(widestNameWidth / CurrentEngineNameColumnWidth));
+            float widthBasedHeight = widthBasedLines * singleLineHeight;
+            float textHeight = Mathf.Max(wrappedHeight, widthBasedHeight);
+
+            return Mathf.Max(
+                CurrentEngineMinRowHeight,
+                CurrentEngineThumbnailSize + 4f,
+                textHeight + CurrentEngineRowVerticalPadding);
+        }
+
+        private float CurrentEnginesScrollHeight(float rowHeight)
         {
             int rows = _snapshot == null ? 0 : _snapshot.CurrentEngineDetails.Count;
-            // Show the whole list when it is short rather than a scrollbar around two rows.
-            return Mathf.Clamp(rows * 22f, 26f, 110f);
+            float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
+
+            // Row height is derived from the widest engine title in the current list, so the
+            // viewport grows with wrapped names rather than relying on a fixed row height.
+            //
+            // When Existing Stage is expanded, its scroll view and Current Engines are stacked
+            // in the same left-hand column.  Giving both independent screen-relative maxima can
+            // make that column taller than the screen on stages with many engines.  Treat the
+            // two scrollable sections as sharing one vertical budget instead.  Extra engine rows
+            // remain accessible through this list's scrollbar rather than growing the main window.
+            float maximum = Mathf.Clamp(screenHeight * 0.36f, 180f, 420f);
+            if (!_uiSettings.AnalysisExistingStageCollapsed)
+            {
+                float sharedFraction = _uiSettings.AnalysisSimulationEnvironmentCollapsed ? 0.62f : 0.48f;
+                float sharedBudget = Mathf.Clamp(screenHeight * sharedFraction, 300f, 680f);
+                maximum = Mathf.Min(maximum, Mathf.Max(120f, sharedBudget - AnalysisStageScrollHeight()));
+            }
+
+            return Mathf.Clamp(rows * (rowHeight + 2f), 90f, maximum);
         }
 
         private float AnalysisEngineScrollHeight()
@@ -2986,18 +3334,23 @@ namespace VesselPlanner.UI
         // Correct the Selected Engine scroll height by the difference between the two
         // measured pane heights.  Skipped when the Tanks pane holds no suggestions, since
         // matching that short pane would squeeze the engine details to a few rows.
+        private bool HasVisibleTankSuggestions()
+        {
+            return _tankSuggestions != null && _tankSuggestions.Any(TankMatchesTextFilter);
+        }
+
         private void MatchPlanningPaneHeights()
         {
-            if (!_planningMode || _selected == null || _tankSuggestions.Count == 0)
+            if (!_planningMode || _selected == null || !HasVisibleTankSuggestions())
             {
-                _planningEngineScrollHeight = TankListScrollHeightPx;
+                _planningEngineScrollHeight = TankListScrollHeight();
                 return;
             }
             if (_measuredPlanningEnginePaneHeight <= 1f || _measuredPlanningTankPaneHeight <= 1f) return;
 
             float difference = _measuredPlanningTankPaneHeight - _measuredPlanningEnginePaneHeight;
             if (Mathf.Abs(difference) < 1f) return;
-            _planningEngineScrollHeight = Mathf.Clamp(PlanningEngineScrollHeight() + difference, MinMatchedScrollHeight, MaxMatchedScrollHeight);
+            _planningEngineScrollHeight = Mathf.Clamp(PlanningEngineScrollHeight() + difference, MinMatchedScrollHeight, PlanningMaxMatchedScrollHeight());
 
             // Discard the measurements that produced this correction.  Draw() runs once per
             // event, so leaving them in place would apply the same difference again on the
@@ -3006,13 +3359,56 @@ namespace VesselPlanner.UI
             _measuredPlanningTankPaneHeight = 0f;
         }
 
+        // Use otherwise-empty screen space below the Planning window for the Selected Engine
+        // and Tanks row.  This is a separate allowance from the horizontal splitter above the
+        // row: the splitter continues to trade height between the upper and lower Planning rows,
+        // while this expansion grows only the lower row into space that would otherwise be unused.
+        // Measuring the Tanks pane lets us include its wrapping header/footer chrome without
+        // hard-coding a pixel allowance.  If the window is moved lower, the same calculation
+        // shrinks the scroll areas again so the pane bottoms remain on-screen.
+        private void ExpandPlanningBottomPanesToScreen()
+        {
+            if (!_planningMode || _selected == null || !HasVisibleTankSuggestions())
+            {
+                _planningBottomPaneExpansion = 0f;
+                _measuredPlanningTankPaneTop = 0f;
+                return;
+            }
+
+            if (_measuredPlanningTankPaneTop <= 1f || _measuredPlanningTankPaneHeight <= 1f) return;
+
+            float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
+            float targetBottom = Mathf.Max(0f, screenHeight - PlanningBottomScreenMargin);
+            float currentBottom = _window.y + _measuredPlanningTankPaneTop + _measuredPlanningTankPaneHeight;
+            float delta = targetBottom - currentBottom;
+            if (Mathf.Abs(delta) < 1f) return;
+
+            float currentScrollHeight = TankListScrollHeight();
+            float targetScrollHeight = Mathf.Clamp(
+                currentScrollHeight + delta,
+                MinMatchedScrollHeight,
+                PlanningMaxMatchedScrollHeight());
+            float appliedDelta = targetScrollHeight - currentScrollHeight;
+            if (Mathf.Abs(appliedDelta) < 1f) return;
+
+            float baseHeight = TankListScrollHeightPx - PlanningListHeightOffset();
+            _planningBottomPaneExpansion = targetScrollHeight - baseHeight;
+
+            // The engine pane must be remeasured against the newly-sized Tanks pane on the
+            // next repaint rather than matched against the measurements from the old height.
+            _measuredPlanningEnginePaneHeight = 0f;
+            _measuredPlanningTankPaneHeight = 0f;
+            _measuredPlanningTankPaneTop = 0f;
+        }
+
         // How far the Planning grip has been dragged below the aligned position.  Negative
         // values are not stored: dragging up stops once the engine list is level with the
         // Requirements box, since the box beside it cannot shrink any further.
         // How far the grip above the detail panes has been dragged from the default split.
         // The offset is added to the Requirements viewport and taken off the Tanks table, so
-        // the two rows always add up to the same total and the window keeps its height. That
-        // only holds while both panes are within their limits, so the offset is confined to
+        // the two rows always add up to the same base total. The lower panes can additionally
+        // use free screen space below that base layout. The trade only holds while both panes
+        // are within their limits, so the offset is confined to
         // the range where neither clamps: past that the grip would grow one row without the
         // other giving anything back, and the window would expand.
         private float PlanningListHeightOffset()
@@ -3304,16 +3700,19 @@ namespace VesselPlanner.UI
         {
             _engines = EngineDatabase.ScanAvailableEngines();
             _tanks = TankDatabase.ScanAvailableTanks();
-            _tankSuggestions = _selected != null && _planningMode ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected) : new List<TankSuggestion>();
+            _tankSuggestions = _selected != null && _planningMode ? TankPlanner.Suggest(ApplyTankBulkheadFilter(_tanks), _selected, MaxDifferentTankTypesToConsider(), MaxTanksInSetToConsider()) : new List<TankSuggestion>();
             _selectedTank = null;
             ApplyTankSort();
             _status = _engines.Count + " engine definitions and " + _tanks.Count + " tank definitions loaded.";
         }
 
-        private void RefreshStage()
+        private void RefreshStage(bool updateTankRatio = true)
         {
             _snapshot = EditorStageScanner.Scan(_stage);
-            if (_snapshot != null && _snapshot.InferredTankDryRatio > 0.0)
+            // Stage selection/opening may seed the planning ratio from the craft, but an
+            // ordinary Calculate/Simulate/Refresh recalculation must not silently replace
+            // a value the user typed into Requirements.
+            if (updateTankRatio && _snapshot != null && _snapshot.InferredTankDryRatio > 0.0)
                 _tankRatio = _snapshot.InferredTankDryRatio.ToString("0.###", CultureInfo.InvariantCulture);
         }
 

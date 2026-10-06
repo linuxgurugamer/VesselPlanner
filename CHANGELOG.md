@@ -1,4 +1,121 @@
-﻿## 0.7.80
+﻿## 0.7.97
+- Throttled Planning altitude changes so `RecalculateForEnvironmentChange()` runs no more than once per second while the altitude slider is changing.
+- Added a pending trailing recalculation so the final altitude is applied after the throttle interval even when the user stops moving the slider between intervals.
+- Analyze Existing altitude changes remain immediate.
+- Planet/body changes remain immediate and are not subject to the altitude throttle.
+- Updated `VesselPlanner.version` and assembly version to 0.7.97.0.
+
+## 0.7.96
+- Expanded the Planning **Selected Engine** and **Tanks** panes to use otherwise-unused vertical space down to the bottom of the screen.
+- The existing horizontal Planning splitter still trades height between the upper Requirements/candidate row and the lower detail row; the new screen-bottom allowance is additional space rather than a replacement for that splitter behavior.
+- Moving the VesselPlanner window lower automatically reduces the lower-pane expansion so the panes stay on-screen.
+- Updated `VesselPlanner.version` and assembly version to 0.7.96.0.
+
+## 0.7.95
+- Fixed **Analyze Existing -> Current engines** allowing the main VesselPlanner window to grow taller than the screen on stages with many engines.
+- When **Existing stage** is expanded, its scroll view and **Current engines** now share a screen-relative vertical budget; additional engines scroll inside the Current Engines list instead of increasing the outer window height.
+- Preserved a larger Current Engines viewport when the Existing Stage or Simulation Environment sections are collapsed and more vertical room is available.
+- Updated `VesselPlanner.version` and assembly version to 0.7.95.0.
+
+## 0.7.94
+- Changed the TWR gravity display label to **TWR gravity (surface)**.
+- Removed **(surface)** from the displayed gravity value so the numeric value no longer wraps onto an extra line.
+- Updated `VesselPlanner.version` and assembly version to 0.7.94.0.
+
+## 0.7.93
+- Added **Max tanks in set** to the Planning Requirements pane.
+- The new requirement limits the total number of tanks in a suggested set across all tank types, independently of **Max different tank types**.
+- A value of `0` means no total tank-count limit, preserving the previous default behavior.
+- Tank count optimization now enforces the total-count limit while searching one-, two-, and three-type sets, so a valid lower-count combination can still be selected even when the unrestricted optimum would exceed the limit.
+- Updated README and Markdown manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.93.0.
+
+## 0.7.92
+- Fixed Planning calculations producing a different engine candidate list after the top-right **Refresh** button than after **Calculate** with the same visible inputs.
+- **Calculate** and **Analyze Existing** simulations now take a fresh snapshot of the selected editor stage for every calculation instead of reusing a cached stage snapshot.
+- The top-right **Refresh** button now relies on the same calculation path instead of performing a separate stage pre-scan.
+- Automatic calculation-time stage refreshes preserve user-entered Planning values such as the tank dry/fuel mass ratio.
+- Updated `VesselPlanner.version` and assembly version to 0.7.92.0.
+
+## 0.7.91
+- Made **Analyze Existing -> Current engines** row height dynamic instead of using a fixed 42-pixel value.
+- VesselPlanner now measures the widest displayed engine part name with the active GUI skin, calculates how much vertical space that name needs in the engine-name column, and applies that height uniformly to every Current Engines row.
+- Updated the Current Engines viewport calculation to use the dynamically calculated row height, keeping wrapped names and numeric columns aligned.
+- Updated README/manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.91.0.
+
+## 0.7.90
+- Added independent collapse/expand controls to the Analyze Existing **Simulation environment**, **Existing stage**, and **Current engines** sections.
+- Collapse state is saved in VesselPlanner UI settings and restored between sessions.
+- Made Current Engines a fully independent boxed section instead of visually nesting it inside Existing Stage.
+- Increased Current Engines row height to 42 px for wrapped engine names and increased the viewport to as much as 420 px on a normal desktop, scaling with screen height.
+- Updated `VesselPlanner.version` and assembly version to 0.7.90.0.
+
+## 0.7.89
+- Synchronized the **Analyze Existing -> Current engines** column headings with the engine list's horizontal scroll position.
+- The headings now move left and right with the engine rows while remaining above the vertically scrolling list.
+- Updated `VesselPlanner.version` and assembly version to 0.7.89.0.
+
+## 0.7.88
+- Reworked the **Analyze Existing -> Current engines** layout so the Current Engines list is no longer nested inside the fixed-height Existing Stage diagnostics scroll view.
+- Current Engines now has its own visible scroll viewport, so increasing its requested height actually increases the on-screen list height.
+- Increased the Current Engines viewport to show up to roughly nine engine rows on a normal desktop display, while scaling down on shorter screens.
+- Reduced the stage-diagnostics viewport proportionally so the Analyze Existing window remains usable without uncontrolled vertical growth.
+- Updated `VesselPlanner.version` and assembly version to 0.7.88.0.
+
+## 0.7.87
+- Increased the **Analyze Existing -> Current engines** list viewport so more current engines are visible at once.
+- Corrected the viewport sizing to match the actual 28-pixel engine-row height, with additional vertical spacing.
+- The maximum Current Engines viewport now scales with screen height and is capped at 220 pixels.
+- Updated `VesselPlanner.version` and assembly version to 0.7.87.0.
+
+## 0.7.86
+- Removed the **Add Set** button from mixed tank suggestions in normal Planning mode.
+- Per-component **Add Tank** buttons remain available for each tank type in a mixed set.
+- **Add to Stage** remains available for the complete tank set while Stage-By-Stage is capturing an Engines & Tanks stage.
+- Mixed-set rows no longer reserve the extra whole-set action height in normal Planning.
+- Updated README/manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.86.0.
+
+## 0.7.85
+- Tightened tank-set resource compatibility rules.
+- Every tank in a suggested set must contain only resources required by the selected engine; tanks carrying unrelated/unused resources are excluded.
+- Mixed tank sets are now allowed only when every tank type has the same resource-name combination, or when every tank type is a single-resource tank.
+- Resource-layout validation is applied before mixed-set count searches, avoiding invalid pair/triple combinations.
+- Updated README/manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.85.0.
+
+## 0.7.84
+- Increased the height of tank-component lines in the Planning tank list so long descriptions, including B9PartSwitch subtype names, have room to wrap cleanly.
+- Mixed two- and three-type tank sets now show an **Add Tank** button aligned with each individual tank type.
+- The complete mixed-set action remains available as **Add Set** in normal Planning or **Add to Stage** during Stage-By-Stage capture.
+- The **Add Engine & Tanks** button is now hidden on the Planning page instead of being shown disabled.
+- Updated README/manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.84.0.
+
+## 0.7.83
+- Added a horizontal separator between each complete tank-set suggestion in the Planning tank list.
+- Added **Max different tank types** to the Planning Requirements pane.
+- Tank combination generation now honors that requirement, clamped to 1 through 3 different tank types per suggestion.
+- Updated README/manual documentation and release metadata.
+- Updated `VesselPlanner.version` and assembly version to 0.7.83.0.
+
+## 0.7.82
+- Changed mixed tank-set rendering so each tank type is displayed on its own line with its thumbnail, quantity, and description together.
+- Two- and three-type tank suggestions now expand vertically instead of combining all tank descriptions into a single line.
+- Aggregate columns (total count, dry mass, excess, bulkhead, and capacity) remain associated with the complete tank set.
+- Updated `VesselPlanner.version` and assembly version to 0.7.82.0.
+
+## 0.7.81
+- Added B9PartSwitch fuel-subtype discovery to the tank database when B9PartSwitch is installed.
+- Each B9 fuel subtype is exposed as a separate tank candidate with switcher source, subtype name/title, tankType, addedMass, and addedCost metadata.
+- B9 subtype resource capacities are built from the loaded B9_TANK_TYPE RESOURCE/unitsPerVolume definitions and the ModuleB9PartSwitch effective tank volume.
+- Subtype-level RESOURCE entries override matching tankType resources or add new resources, matching B9PartSwitch behavior.
+- Tank suggestion deduplication now uses a subtype-aware identity, so different B9 configurations of the same physical part remain separate choices.
+- Stage-By-Stage now preserves B9 subtype variants as separate planned parts and records subtype wet mass for cumulative-stage mass calculations.
+- Updated VesselPlanner.version and assembly version to 0.7.81.0.
+
+## 0.7.80
 - Fixed Flight Data X-axis scrolling so telemetry traces continue moving left after the plot reaches the right edge.
 - Changed the graph viewport to use sample sequence numbers, keeping scrolling correct even while the rolling sample buffer discards old samples.
 - Vertical time-grid lines and elapsed-time labels now scroll left with the telemetry instead of remaining fixed on the screen.

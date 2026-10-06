@@ -1,4 +1,4 @@
-{
+﻿{
   "NAME": "VesselPlanner",
 	"URL": "https://raw.githubusercontent.com/linuxgurugamer/VesselPlanner/refs/heads/main/VesselPlanner.version",
 	"DOWNLOAD": "https://github.com/linuxgurugamer/VesselPlanner/releases",
@@ -10,7 +10,7 @@
   "VERSION": {
     "MAJOR": 0,
     "MINOR": 7,
-    "PATCH": 80,
+    "PATCH": 97,
     "BUILD": 0
   },
   "KSP_VERSION_MIN": {

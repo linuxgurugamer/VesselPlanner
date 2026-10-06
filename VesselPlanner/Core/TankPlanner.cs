@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -15,14 +15,18 @@ namespace VesselPlanner.Core
         private const int MaxTripleTankTypesPerProfile = 16;
         private const int MaxLoopCount = 96;
 
-        public static List<TankSuggestion> Suggest(IEnumerable<TankCandidate> tanks, StageSolution solution)
+        public static List<TankSuggestion> Suggest(IEnumerable<TankCandidate> tanks, StageSolution solution, int maxDifferentTankTypes = 3, int maxTanksInSet = 0)
         {
             var results = new List<TankSuggestion>();
             if (solution == null || solution.Propellants.Count == 0 || tanks == null) return results;
 
+            maxDifferentTankTypes = Math.Max(1, Math.Min(3, maxDifferentTankTypes));
+            int totalTankLimit = maxTanksInSet <= 0 ? int.MaxValue : maxTanksInSet;
+
             List<TankCandidate> usable = tanks
                 .Where(t => t != null && t.Resources != null && t.Resources.Count > 0 && t.BulkheadProfiles != null && t.BulkheadProfiles.Count > 0)
                 .Where(t => SupportsAnyRequiredResource(t, solution.Propellants))
+                .Where(t => HasOnlyRequiredResources(t, solution.Propellants))
                 .ToList();
             if (usable.Count == 0) return results;
 
@@ -45,22 +49,28 @@ namespace VesselPlanner.Core
                     .ToList();
 
                 for (int a = 0; a < profileTanks.Count; a++)
-                    AddBestForSet(results, seenSuggestions, profile, solution.Propellants, profileTanks[a]);
+                    AddBestForSet(results, seenSuggestions, profile, solution.Propellants, totalTankLimit, profileTanks[a]);
 
-                List<TankCandidate> pairTanks = profileTanks.Take(MaxPairTankTypesPerProfile).ToList();
-                for (int a = 0; a < pairTanks.Count; a++)
+                if (maxDifferentTankTypes >= 2)
                 {
-                    for (int b = a + 1; b < pairTanks.Count; b++)
-                        AddBestForSet(results, seenSuggestions, profile, solution.Propellants, pairTanks[a], pairTanks[b]);
+                    List<TankCandidate> pairTanks = profileTanks.Take(MaxPairTankTypesPerProfile).ToList();
+                    for (int a = 0; a < pairTanks.Count; a++)
+                    {
+                        for (int b = a + 1; b < pairTanks.Count; b++)
+                            AddBestForSet(results, seenSuggestions, profile, solution.Propellants, totalTankLimit, pairTanks[a], pairTanks[b]);
+                    }
                 }
 
-                List<TankCandidate> tripleTanks = profileTanks.Take(MaxTripleTankTypesPerProfile).ToList();
-                for (int a = 0; a < tripleTanks.Count; a++)
+                if (maxDifferentTankTypes >= 3)
                 {
-                    for (int b = a + 1; b < tripleTanks.Count; b++)
+                    List<TankCandidate> tripleTanks = profileTanks.Take(MaxTripleTankTypesPerProfile).ToList();
+                    for (int a = 0; a < tripleTanks.Count; a++)
                     {
-                        for (int c = b + 1; c < tripleTanks.Count; c++)
-                            AddBestForSet(results, seenSuggestions, profile, solution.Propellants, tripleTanks[a], tripleTanks[b], tripleTanks[c]);
+                        for (int b = a + 1; b < tripleTanks.Count; b++)
+                        {
+                            for (int c = b + 1; c < tripleTanks.Count; c++)
+                                AddBestForSet(results, seenSuggestions, profile, solution.Propellants, totalTankLimit, tripleTanks[a], tripleTanks[b], tripleTanks[c]);
+                        }
                     }
                 }
             }
@@ -75,29 +85,31 @@ namespace VesselPlanner.Core
         }
 
         private static void AddBestForSet(List<TankSuggestion> results, HashSet<string> seen, string profile,
-            IList<PropellantRequirement> requirements, params TankCandidate[] tankSet)
+            IList<PropellantRequirement> requirements, int maxTanksInSet, params TankCandidate[] tankSet)
         {
             if (tankSet == null || tankSet.Length == 0 || tankSet.Length > 3) return;
+            if (maxTanksInSet < tankSet.Length) return;
+            if (!TankSetResourceLayoutIsValid(tankSet, requirements)) return;
             if (!SetCanCoverAllRequirements(tankSet, requirements)) return;
 
-            TankSuggestion best = FindBestCounts(profile, tankSet, requirements);
-            if (best == null) return;
+            TankSuggestion best = FindBestCounts(profile, tankSet, requirements, maxTanksInSet);
+            if (best == null || best.Count > maxTanksInSet) return;
 
             string key = string.Join("|", best.Tanks
                 .Where(p => p != null && p.Tank != null && p.Count > 0)
-                .OrderBy(p => p.Tank.PartName, StringComparer.OrdinalIgnoreCase)
-                .Select(p => (p.Tank.PartName ?? string.Empty) + "=" + p.Count.ToString())
+                .OrderBy(p => p.Tank.IdentityKey, StringComparer.OrdinalIgnoreCase)
+                .Select(p => (p.Tank.IdentityKey ?? string.Empty) + "=" + p.Count.ToString())
                 .ToArray());
             if (key.Length == 0 || !seen.Add(key)) return;
             results.Add(best);
         }
 
-        private static TankSuggestion FindBestCounts(string profile, TankCandidate[] tankSet, IList<PropellantRequirement> requirements)
+        private static TankSuggestion FindBestCounts(string profile, TankCandidate[] tankSet, IList<PropellantRequirement> requirements, int maxTanksInSet)
         {
             if (tankSet.Length == 1)
             {
                 int count = MinimumCountToComplete(tankSet[0], requirements, null);
-                if (count <= 0 || count == int.MaxValue) return null;
+                if (count <= 0 || count == int.MaxValue || count > maxTanksInSet) return null;
                 return BuildSuggestion(profile, requirements, new[] { MakePart(tankSet[0], count) });
             }
 
@@ -111,6 +123,8 @@ namespace VesselPlanner.Core
 
             TankSuggestion best = null;
             int max0 = Math.Min(MaxLoopCount, MaxUsefulCount(ordered[0], requirements));
+            if (maxTanksInSet != int.MaxValue)
+                max0 = Math.Min(max0, maxTanksInSet - (ordered.Length - 1));
             if (max0 <= 0) return null;
 
             if (ordered.Length == 2)
@@ -122,7 +136,7 @@ namespace VesselPlanner.Core
                     if (RequirementsMet(provided, requirements)) continue; // second type would be unnecessary
 
                     int c1 = MinimumCountToComplete(ordered[1], requirements, provided);
-                    if (c1 <= 0 || c1 == int.MaxValue) continue;
+                    if (c1 <= 0 || c1 == int.MaxValue || !CountWithinLimit(maxTanksInSet, c0, c1)) continue;
                     TankSuggestion candidate = BuildSuggestion(profile, requirements,
                         new[] { MakePart(ordered[0], c0), MakePart(ordered[1], c1) });
                     best = Better(best, candidate);
@@ -136,20 +150,37 @@ namespace VesselPlanner.Core
             {
                 Dictionary<string, double> firstProvided = NewProvidedMap(requirements);
                 AddTankContribution(firstProvided, ordered[0], c0);
-                for (int c1 = 1; c1 <= max1; c1++)
+                int max1ForC0 = max1;
+                if (maxTanksInSet != int.MaxValue)
+                    max1ForC0 = Math.Min(max1ForC0, maxTanksInSet - c0 - 1);
+                for (int c1 = 1; c1 <= max1ForC0; c1++)
                 {
                     Dictionary<string, double> provided = new Dictionary<string, double>(firstProvided, StringComparer.OrdinalIgnoreCase);
                     AddTankContribution(provided, ordered[1], c1);
                     if (RequirementsMet(provided, requirements)) continue; // third type would be unnecessary
 
                     int c2 = MinimumCountToComplete(ordered[2], requirements, provided);
-                    if (c2 <= 0 || c2 == int.MaxValue) continue;
+                    if (c2 <= 0 || c2 == int.MaxValue || !CountWithinLimit(maxTanksInSet, c0, c1, c2)) continue;
                     TankSuggestion candidate = BuildSuggestion(profile, requirements,
                         new[] { MakePart(ordered[0], c0), MakePart(ordered[1], c1), MakePart(ordered[2], c2) });
                     best = Better(best, candidate);
                 }
             }
             return best;
+        }
+
+
+        private static bool CountWithinLimit(int maxTanksInSet, params int[] counts)
+        {
+            if (maxTanksInSet == int.MaxValue) return true;
+            long total = 0;
+            foreach (int count in counts)
+            {
+                if (count <= 0) return false;
+                total += count;
+                if (total > maxTanksInSet) return false;
+            }
+            return true;
         }
 
         private static TankSuggestion Better(TankSuggestion current, TankSuggestion candidate)
@@ -255,6 +286,56 @@ namespace VesselPlanner.Core
                 max = Math.Max(max, (int)Math.Ceiling(req.Units / cap.Units - 1e-12));
             }
             return Math.Max(0, Math.Min(512, max));
+        }
+
+
+        private static bool TankSetResourceLayoutIsValid(IEnumerable<TankCandidate> tankSet, IEnumerable<PropellantRequirement> requirements)
+        {
+            if (tankSet == null) return false;
+
+            var tanks = tankSet.Where(t => t != null).ToList();
+            if (tanks.Count == 0) return false;
+            if (tanks.Any(t => !HasOnlyRequiredResources(t, requirements))) return false;
+
+            List<HashSet<string>> resourceSets = tanks
+                .Select(ActiveResourceNames)
+                .ToList();
+            if (resourceSets.Any(set => set.Count == 0)) return false;
+
+            bool allSingleResource = resourceSets.All(set => set.Count == 1);
+            if (allSingleResource) return true;
+
+            HashSet<string> first = resourceSets[0];
+            return resourceSets.All(set => set.SetEquals(first));
+        }
+
+        private static bool HasOnlyRequiredResources(TankCandidate tank, IEnumerable<PropellantRequirement> requirements)
+        {
+            if (tank == null || requirements == null) return false;
+
+            var required = new HashSet<string>(
+                requirements
+                    .Where(r => r != null && !string.IsNullOrWhiteSpace(r.ResourceName) && r.Units > 0.0)
+                    .Select(r => r.ResourceName.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+            if (required.Count == 0) return false;
+
+            HashSet<string> tankResources = ActiveResourceNames(tank);
+            if (tankResources.Count == 0) return false;
+            return tankResources.All(required.Contains);
+        }
+
+        private static HashSet<string> ActiveResourceNames(TankCandidate tank)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (tank == null || tank.Resources == null) return names;
+
+            foreach (TankResourceCapacity resource in tank.Resources)
+            {
+                if (resource == null || resource.Units <= 0.0 || string.IsNullOrWhiteSpace(resource.ResourceName)) continue;
+                names.Add(resource.ResourceName.Trim());
+            }
+            return names;
         }
 
         private static bool SetCanCoverAllRequirements(IEnumerable<TankCandidate> tankSet, IEnumerable<PropellantRequirement> requirements)

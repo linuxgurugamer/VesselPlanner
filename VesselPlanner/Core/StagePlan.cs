@@ -21,6 +21,12 @@ namespace VesselPlanner.Core
         // internal name causes the wrong thumbnail to be reused for one of them.
         public string PartUrl { get; set; }
         public string DisplayName { get; set; }
+        // Distinguishes switchable variants which share the same physical KSP PartName.
+        // Empty for ordinary parts and engines.
+        public string VariantKey { get; set; }
+        // Optional per-copy wet mass captured from the planner.  Older plans leave this at
+        // zero and Stage-By-Stage falls back to the loaded part prefab mass calculation.
+        public double UnitWetMassTons { get; set; }
         public int Quantity { get; set; }
         public bool IsEngine { get; set; }
 
@@ -31,6 +37,8 @@ namespace VesselPlanner.Core
                 PartName = PartName,
                 PartUrl = PartUrl,
                 DisplayName = DisplayName,
+                VariantKey = VariantKey,
+                UnitWetMassTons = UnitWetMassTons,
                 Quantity = Quantity,
                 IsEngine = IsEngine
             };
@@ -125,19 +133,24 @@ namespace VesselPlanner.Core
 
         // Adding the same part twice accumulates rather than listing it again, so a stage
         // built up over several passes in the planner reads as one line per part.
-        public void AddPart(string partName, string partUrl, string displayName, int quantity, bool isEngine)
+        public void AddPart(string partName, string partUrl, string displayName, int quantity, bool isEngine,
+            string variantKey = null, double unitWetMassTons = 0.0)
         {
             if (string.IsNullOrEmpty(partName) || quantity <= 0) return;
 
+            string normalizedVariant = variantKey ?? string.Empty;
             foreach (PlannedPart existing in Parts)
             {
-                if (existing.PartName == partName && existing.IsEngine == isEngine)
+                if (existing.PartName == partName && existing.IsEngine == isEngine &&
+                    string.Equals(existing.VariantKey ?? string.Empty, normalizedVariant, StringComparison.OrdinalIgnoreCase))
                 {
                     existing.Quantity += quantity;
                     // Backfill in case an earlier add (or an older saved plan) went
-                    // through before PartUrl existed on this entry.
+                    // through before PartUrl/variant mass existed on this entry.
                     if (string.IsNullOrEmpty(existing.PartUrl) && !string.IsNullOrEmpty(partUrl))
                         existing.PartUrl = partUrl;
+                    if (existing.UnitWetMassTons <= 0.0 && unitWetMassTons > 0.0)
+                        existing.UnitWetMassTons = unitWetMassTons;
                     return;
                 }
             }
@@ -147,6 +160,8 @@ namespace VesselPlanner.Core
                 PartName = partName,
                 PartUrl = partUrl,
                 DisplayName = string.IsNullOrEmpty(displayName) ? partName : displayName,
+                VariantKey = normalizedVariant,
+                UnitWetMassTons = Math.Max(0.0, unitWetMassTons),
                 Quantity = quantity,
                 IsEngine = isEngine
             });
@@ -256,6 +271,10 @@ namespace VesselPlanner.Core
                     partNode.AddValue("PartName", part.PartName ?? "");
                     partNode.AddValue("PartUrl", part.PartUrl ?? "");
                     partNode.AddValue("DisplayName", part.DisplayName ?? "");
+                    if (!string.IsNullOrEmpty(part.VariantKey))
+                        partNode.AddValue("VariantKey", part.VariantKey);
+                    if (part.UnitWetMassTons > 0.0)
+                        partNode.AddValue("UnitWetMassTons", part.UnitWetMassTons.ToString("0.########", CultureInfo.InvariantCulture));
                     partNode.AddValue("Quantity", part.Quantity.ToString(CultureInfo.InvariantCulture));
                     partNode.AddValue("IsEngine", part.IsEngine.ToString());
                 }
@@ -353,6 +372,8 @@ namespace VesselPlanner.Core
                         // just resolve/cache their thumbnails by name until re-added.
                         PartUrl = CommonRoutines.ReadString(partNode, "PartUrl", ""),
                         DisplayName = CommonRoutines.ReadString(partNode, "DisplayName", ""),
+                        VariantKey = CommonRoutines.ReadString(partNode, "VariantKey", ""),
+                        UnitWetMassTons = Math.Max(0.0, CommonRoutines.ReadDouble(partNode, "UnitWetMassTons", 0.0)),
                         Quantity = (int)CommonRoutines.ReadDouble(partNode, "Quantity", 1.0),
                         IsEngine = CommonRoutines.ReadBool(partNode, "IsEngine", false)
                     });

@@ -216,11 +216,12 @@ namespace VesselPlanner.UI
         // Called by the planner when an engine or tank is picked while a stage is being
         // built. Returns false when nothing is being built, so the planner falls back to
         // placing the part in the editor as usual.
-        public bool CapturePart(string partName, string partUrl, string displayName, int quantity, bool isEngine)
+        public bool CapturePart(string partName, string partUrl, string displayName, int quantity, bool isEngine,
+            string variantKey = null, double unitWetMassTons = 0.0)
         {
             if (!IsCapturing) return false;
 
-            _plan.Stages[_activeStageIndex].AddPart(partName, partUrl, displayName, quantity, isEngine);
+            _plan.Stages[_activeStageIndex].AddPart(partName, partUrl, displayName, quantity, isEngine, variantKey, unitWetMassTons);
             _status = "Added " + quantity + " x " + (string.IsNullOrEmpty(displayName) ? partName : displayName)
                 + " to stage " + (_activeStageIndex + 1) + ".";
             return true;
@@ -247,7 +248,9 @@ namespace VesselPlanner.UI
                 foreach (TankSuggestionPart item in tanks)
                 {
                     if (item == null || item.Tank == null || item.Count <= 0) continue;
-                    stage.AddPart(item.Tank.PartName, item.Tank.PartUrl, item.Tank.DisplayName, item.Count, false);
+                    stage.AddPart(item.Tank.PartName, item.Tank.PartUrl, item.Tank.DisplayName, item.Count, false,
+                        item.Tank.IsSubtype ? item.Tank.IdentityKey : null,
+                        item.Tank.IsSubtype ? item.Tank.WetMassTons : 0.0);
                     tankTypes++;
                 }
             }
@@ -1944,7 +1947,10 @@ namespace VesselPlanner.UI
             foreach (PlannedPart part in stage.Parts)
             {
                 if (part == null || part.Quantity <= 0 || string.IsNullOrEmpty(part.PartName)) continue;
-                mass += GetFullWetPartMassTons(part.PartName) * part.Quantity;
+                double unitMass = part.UnitWetMassTons > 0.0
+                    ? part.UnitWetMassTons
+                    : GetFullWetPartMassTons(part.PartName);
+                mass += unitMass * part.Quantity;
             }
             return Math.Max(0.0, mass);
         }

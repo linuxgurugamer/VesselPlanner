@@ -20,9 +20,61 @@ namespace VesselPlanner.Core
         public string DisplayName { get; set; }
         public double DryMassTons { get; set; }
         public double Cost { get; set; }
+
+        // Fuel-switch subtype metadata.  Empty SubtypeMod means this is the ordinary
+        // unswitched/default KSP part candidate.  The first supported switch provider is
+        // B9PartSwitch; keeping the provider explicit leaves room for other fuel switchers.
+        public string SubtypeMod { get; set; }
+        // Identifies the individual switcher on parts which contain more than one
+        // ModuleB9PartSwitch. Empty for non-switched tanks.
+        public string SubtypeModuleId { get; set; }
+        public string SubtypeName { get; set; }
+        public string SubtypeTitle { get; set; }
+        public string TankType { get; set; }
+        public double AddedMass { get; set; }
+        public double AddedCost { get; set; }
+
+        // Volume used by switcher tank definitions.  For B9PartSwitch this is the module
+        // baseVolume plus any subtype volumeAdded value.
+        public double TankVolume { get; set; }
+
         // KSP part-wide bulkheadProfiles values (for example size1 or srf).
         public List<string> BulkheadProfiles { get; } = new List<string>();
         public List<TankResourceCapacity> Resources { get; } = new List<TankResourceCapacity>();
+
+        public bool IsSubtype
+        {
+            get { return !string.IsNullOrEmpty(SubtypeMod) || !string.IsNullOrEmpty(SubtypeName); }
+        }
+
+        // The physical KSP PartName is shared by every switched subtype.  Use this key
+        // wherever candidates must remain distinct in planning/deduplication logic.
+        public string IdentityKey
+        {
+            get
+            {
+                if (!IsSubtype) return PartName ?? string.Empty;
+                return (PartName ?? string.Empty) + "|" +
+                       (SubtypeMod ?? string.Empty) + "|" +
+                       (SubtypeModuleId ?? string.Empty) + "|" +
+                       (SubtypeName ?? string.Empty) + "|" +
+                       (TankType ?? string.Empty);
+            }
+        }
+
+        public double WetMassTons
+        {
+            get
+            {
+                double mass = Math.Max(0.0, DryMassTons);
+                foreach (TankResourceCapacity resource in Resources)
+                {
+                    if (resource == null || resource.Units <= 0.0 || resource.DensityTonsPerUnit <= 0.0) continue;
+                    mass += resource.Units * resource.DensityTonsPerUnit;
+                }
+                return Math.Max(0.0, mass);
+            }
+        }
     }
 
     // One tank type in a suggested tank set. A set can contain one, two, or three
