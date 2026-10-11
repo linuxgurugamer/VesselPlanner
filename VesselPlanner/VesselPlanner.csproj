@@ -75,6 +75,7 @@
     <Compile Include="KSP\SavedAssemblyCatalog.cs" />
     <Compile Include="RegisterToolbar.cs" />
     <Compile Include="UI\WindowSkin.cs" />
+    <Compile Include="UI\WindowPositionStore.cs" />
     <Compile Include="UI\ComboBox.cs" />
     <Compile Include="UI\MissionPlannerPage.cs" />
     <Compile Include="UI\DeltaVTablePage.cs" />
@@ -134,6 +135,7 @@ if $(ConfigurationName) == Release (
 
 	start /D $(SolutionDir) /WAIT buildRelease.bat $(TargetDir) $(TargetFileName) $(TargetName)
 
-)</PostBuildEvent>
+)
+</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -675,6 +675,10 @@ namespace VesselPlanner.UI
             SyncPartImageSettingText();
             ApplyPartImageSettings();
             _window.width = Mathf.Clamp(_uiSettings.MainWindowWidth, MinWindowWidth, MaxWindowWidth);
+            WindowPositionStore.TryLoadPosition("PlannerMain", ref _window);
+            WindowPositionStore.TryLoadPosition("PlannerSettings", ref _settingsWindow);
+            ClampWindow();
+            CommonRoutines.ClampWindow(ref _settingsWindow);
             RefreshBodies();
             RefreshDatabases();
             _missionPlanner.TooltipsEnabled = _uiSettings.ShowTooltips;
@@ -1027,6 +1031,11 @@ namespace VesselPlanner.UI
             CancelStagePartPick(null);
             PartThumbnailCache.Clear();
             _uiSettings.Save();
+            WindowPositionStore.SavePositions(
+                new WindowPositionStore.Position("PlannerMain", _window),
+                new WindowPositionStore.Position("PlannerSettings", _settingsWindow));
+            _missionPlanner.SaveWindowPositions();
+            if (_stagePlan != null) _stagePlan.SaveWindowPositions();
         }
 
         private void BeginStagePartPick()

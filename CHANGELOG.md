@@ -1,4 +1,11 @@
-﻿## 0.7.97
+﻿## 0.7.98
+- Added persistent window positions across KSP sessions.
+- The main Planner, Planner Settings, Stage-By-Stage, New/Edit Stage, Stage-By-Stage Load/Mission Select, Mission Planner entry/load, Flight Data, and Flight Settings windows now restore their last saved X/Y positions.
+- Restored positions are clamped to the current screen so a saved location from a different resolution or monitor layout cannot leave a window inaccessible.
+- Stage-By-Stage and Mission Planner dialogs retain their existing default/relative placement when no saved position exists yet.
+- Updated `VesselPlanner.version` and assembly version to 0.7.98.0.
+
+## 0.7.97
 - Throttled Planning altitude changes so `RecalculateForEnvironmentChange()` runs no more than once per second while the altitude slider is changing.
 - Added a pending trailing recalculation so the final altitude is applied after the throttle interval even when the user stops moving the slider between intervals.
 - Analyze Existing altitude changes remain immediate.

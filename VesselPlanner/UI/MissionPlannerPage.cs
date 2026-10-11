@@ -101,9 +101,19 @@ namespace VesselPlanner.UI
 
         public void Initialize()
         {
+            _entryPositioned = WindowPositionStore.TryLoadPosition("MissionEntry", ref _entryWindow);
+            _loadPositioned = WindowPositionStore.TryLoadPosition("MissionLoad", ref _loadWindow);
             DeltaVTable.DetectPlanetPack();
             DeltaVTable.LoadDeltaV(DeltaVTable.planetPack);
             RefreshBodyLists();
+        }
+
+        public void SaveWindowPositions()
+        {
+            List<WindowPositionStore.Position> positions = new List<WindowPositionStore.Position>();
+            if (_entryPositioned) positions.Add(new WindowPositionStore.Position("MissionEntry", _entryWindow));
+            if (_loadPositioned) positions.Add(new WindowPositionStore.Position("MissionLoad", _loadWindow));
+            WindowPositionStore.SavePositions(positions.ToArray());
         }
 
         public void DrawPage()

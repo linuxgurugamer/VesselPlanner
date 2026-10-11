@@ -1,4 +1,4 @@
-using ClickThroughFix;
+﻿using ClickThroughFix;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -37,6 +37,10 @@ namespace VesselPlanner.UI
         private Rect _newStageWindow = new Rect(260, 180, 340, 260);
         private Rect _loadWindow = new Rect(260, 180, 360, 380);
         private Rect _missionSelectWindow = new Rect(280, 190, 420, 390);
+        private bool _windowPositionRestored;
+        private bool _newStageWindowPositionRestored;
+        private bool _loadWindowPositionKnown;
+        private bool _missionSelectWindowPositionKnown;
         private Vector2 _stageScroll;
         private Vector2 _loadScroll;
         private Vector2 _missionSelectScroll;
@@ -156,6 +160,10 @@ namespace VesselPlanner.UI
         public StagePlanWindow(PlannerWindow planner)
         {
             _planner = planner;
+            _windowPositionRestored = WindowPositionStore.TryLoadPosition("StagePlanMain", ref _window);
+            _newStageWindowPositionRestored = WindowPositionStore.TryLoadPosition("StagePlanNewStage", ref _newStageWindow);
+            _loadWindowPositionKnown = WindowPositionStore.TryLoadPosition("StagePlanLoad", ref _loadWindow);
+            _missionSelectWindowPositionKnown = WindowPositionStore.TryLoadPosition("StagePlanMissionSelect", ref _missionSelectWindow);
         }
 
         // Called when the user enters Stage-By-Stage mode. A brand-new plan starts
@@ -163,20 +171,27 @@ namespace VesselPlanner.UI
         // editor starts at 5 t. Existing plans keep the mass they already contain.
         internal void PositionBelowPlannerButtons()
         {
-            Vector2 position = _planner.StagePlanOpenPosition;
-            _window.x = position.x;
-            _window.y = position.y;
+            if (!_windowPositionRestored)
+            {
+                Vector2 position = _planner.StagePlanOpenPosition;
+                _window.x = position.x;
+                _window.y = position.y;
+                _windowPositionRestored = true;
+            }
             CommonRoutines.ClampWindow(ref _window);
         }
 
         private void PositionNewStageNextToPlan()
         {
-            // Open the modal directly beside the plan so the two windows read as one
-            // stage-building workspace: tops aligned, dialog left edge touching the
-            // plan's right edge. The dialog remains draggable after it opens.
+            // Use the saved location once one exists.  On a fresh install, open the modal
+            // directly beside the plan so the two windows read as one workspace.
             _newStageWindow.width = 400f;
-            _newStageWindow.x = _window.xMax;
-            _newStageWindow.y = _window.y;
+            if (!_newStageWindowPositionRestored)
+            {
+                _newStageWindow.x = _window.xMax;
+                _newStageWindow.y = _window.y;
+                _newStageWindowPositionRestored = true;
+            }
             CommonRoutines.ClampWindow(ref _newStageWindow);
         }
 
@@ -190,6 +205,16 @@ namespace VesselPlanner.UI
 
             _payloadText = startingMass.ToString("0.###", CultureInfo.InvariantCulture);
             _plan.PayloadMassTons = startingMass;
+        }
+
+        internal void SaveWindowPositions()
+        {
+            List<WindowPositionStore.Position> positions = new List<WindowPositionStore.Position>();
+            if (_windowPositionRestored) positions.Add(new WindowPositionStore.Position("StagePlanMain", _window));
+            if (_newStageWindowPositionRestored) positions.Add(new WindowPositionStore.Position("StagePlanNewStage", _newStageWindow));
+            if (_loadWindowPositionKnown) positions.Add(new WindowPositionStore.Position("StagePlanLoad", _loadWindow));
+            if (_missionSelectWindowPositionKnown) positions.Add(new WindowPositionStore.Position("StagePlanMissionSelect", _missionSelectWindow));
+            WindowPositionStore.SavePositions(positions.ToArray());
         }
 
         // Poll Tab from Unity's normal Update loop instead of depending on the modal
@@ -315,6 +340,7 @@ namespace VesselPlanner.UI
 
             if (_loadVisible)
             {
+                _loadWindowPositionKnown = true;
                 // _planner.DrawSolidBackground(_loadWindow);
                 _loadWindow = ClickThruBlocker.GUILayoutWindow(19041972, _loadWindow, DrawLoadWindow, "Load Plan", RegisterToolbar.winDarker,
                     GUILayout.Width(360f), GUILayout.Height(380f));
@@ -322,6 +348,7 @@ namespace VesselPlanner.UI
 
             if (_missionSelectVisible)
             {
+                _missionSelectWindowPositionKnown = true;
                 _missionSelectWindow = ClickThruBlocker.GUILayoutWindow(19041973, _missionSelectWindow, DrawMissionSelectWindow,
                     "Select Mission Plan", RegisterToolbar.winDarker, GUILayout.Width(420f), GUILayout.Height(390f));
             }

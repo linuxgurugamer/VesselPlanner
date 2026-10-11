@@ -104,6 +104,8 @@ namespace VesselPlanner.UI
         {
             _manager.Initialize();
             LoadFlightSettings();
+            WindowPositionStore.TryLoadPosition("FlightMain", ref _window);
+            WindowPositionStore.TryLoadPosition("FlightSettings", ref _settingsWindow);
             LoadAxisSides();
             _sampleDelayText = _manager.SampleDelaySeconds.ToString("0.##", CultureInfo.InvariantCulture);
             SetChartTopFromCurrentBody(true);
@@ -179,6 +181,10 @@ namespace VesselPlanner.UI
 
         public void Dispose()
         {
+            SaveFlightSettings();
+            WindowPositionStore.SavePositions(
+                new WindowPositionStore.Position("FlightMain", _window),
+                new WindowPositionStore.Position("FlightSettings", _settingsWindow));
             _manager.Dispose();
             if (_graphTexture != null)
             {
