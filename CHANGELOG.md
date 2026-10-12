@@ -1,4 +1,20 @@
-﻿## 0.7.98
+Changelog
+
+## 0.7.102
+- Candidate engine and Planning tank PartExplorer buttons now open PartExplorer in **part picker** mode via `PickPart(...)`.
+- Picking an engine in PartExplorer performs the same action as that engine row's **Add** button; when the same physical engine appears in multiple rows, the currently selected matching row is preferred, otherwise the first displayed matching row is used.
+- Picking a tank in PartExplorer performs the matching **Add Tank** / single-tank-row Add action; when B9 subtypes share one physical part, the currently selected matching tank set/subtype is preferred, otherwise the first displayed match is used.
+- PartExplorer buttons remain hidden when PartExplorer is not installed, and are disabled when API v3 is unavailable or fewer than two unique physical parts are represented in the list.
+- Centered **Tanks needed for the selected propellant requirement** in the Planning tank-pane header.
+- The candidate-engine PartExplorer button is disabled unless at least two unique physical engine parts are represented in the displayed candidate list.
+- The Planning-tank PartExplorer button is disabled unless at least two unique physical tank parts are represented in the currently filtered tank suggestions.
+- Added a defensive check so PartExplorer is not opened with fewer than two resolved parts even if the launch method is called directly.
+- Added **PartExplorer** buttons for the candidate engine list and Planning tank list.
+- The engine button opens PartExplorer restricted to the unique physical engine parts currently represented in the visible candidate rows.
+- The tank button opens PartExplorer restricted to the unique physical tank parts represented by the currently filtered tank suggestions; multiple fuel-switch subtypes of the same physical part are de-duplicated.
+- PartExplorer integration uses the bundled source-only reflection wrapper, so VesselPlanner does not take a compile-time dependency on PartExplorer.dll.
+
+## 0.7.98
 - Added persistent window positions across KSP sessions.
 - The main Planner, Planner Settings, Stage-By-Stage, New/Edit Stage, Stage-By-Stage Load/Mission Select, Mission Planner entry/load, Flight Data, and Flight Settings windows now restore their last saved X/Y positions.
 - Restored positions are clamped to the current screen so a saved location from a different resolution or monitor layout cannot leave a window inaccessible.

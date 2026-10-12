@@ -1,5 +1,6 @@
-﻿using ClickThroughFix;
+using ClickThroughFix;
 using KSP.UI.Screens;
+using PartExplorerAPI;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -188,6 +189,7 @@ namespace VesselPlanner.UI
         private Rect _hoverPartPreviewSourceScreenRect;
         private const float HoverPartPreviewSize = 160f;
         static private GUIStyle _right;
+        static private GUIStyle _center;
         private SolutionSortColumn _solutionSortColumn = SolutionSortColumn.None;
         private bool _solutionSortAscending = true;
         private TankSortColumn _tankSortColumn = TankSortColumn.None;
@@ -1623,7 +1625,28 @@ namespace VesselPlanner.UI
             GUILayout.EndVertical();
             GUILayout.Space(3);
 
-            GUILayout.Label("Candidates (click a column heading to sort; click engine name for details; Add selects it for editor placement)");
+            using (new GUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Candidates (click a column heading to sort; click engine name for details; Add selects it for editor placement)");
+                GUILayout.FlexibleSpace();
+                if (PartExplorerWrapper.IsInstalled)
+                {
+                    int partExplorerEngineCount = CountEnginePartsForPartExplorer();
+                    bool partExplorerApiV3 = PartExplorerWrapper.ApiVersion >= 3;
+                    bool oldEnabled = GUI.enabled;
+                    GUI.enabled = oldEnabled && partExplorerApiV3 && partExplorerEngineCount >= 2;
+                    string partExplorerTooltip = !partExplorerApiV3
+                        ? "PartExplorer API version 3 or later is required for part picking."
+                        : partExplorerEngineCount >= 2
+                            ? "Choose an engine in PartExplorer. Picking it is the same as clicking Add for that engine row."
+                            : "At least two unique engine parts must be shown before opening PartExplorer.";
+                    if (GUILayout.Button(
+                        new GUIContent("PartExplorer", partExplorerTooltip),
+                        GUILayout.Width(105f)))
+                        OpenEngineListInPartExplorer();
+                    GUI.enabled = oldEnabled;
+                }
+            }
             GUILayout.Label("Cost Efficiency = atmospheric Δv at the selected planet/altitude per Fund of engine cost.");
             // Keep the sortable headings horizontally synchronized with the engine rows.
             // This header scroll view intentionally has no visible scrollbars; the horizontal
@@ -1689,6 +1712,264 @@ namespace VesselPlanner.UI
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
+        }
+
+        private sealed class PartExplorerTankChoice
+        {
+            public TankSuggestion Suggestion;
+            public TankSuggestionPart Part;
+        }
+
+        private int CountEnginePartsForPartExplorer()
+        {
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            List<StageSolution> visibleSolutions = _solutions.Take(250).ToList();
+            foreach (StageSolution solution in visibleSolutions)
+            {
+                if (solution == null || solution.Engine == null) continue;
+                string key = PartExplorerPartKey(solution.Engine.PartName, solution.Engine.PartUrl);
+                if (!string.IsNullOrEmpty(key)) seen.Add(key);
+            }
+            return seen.Count;
+        }
+
+        private void OpenEngineListInPartExplorer()
+        {
+            List<AvailablePart> parts = new List<AvailablePart>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, StageSolution> choices =
+                new Dictionary<string, StageSolution>(StringComparer.OrdinalIgnoreCase);
+            List<StageSolution> visibleSolutions = _solutions.Take(250).ToList();
+
+            foreach (StageSolution solution in visibleSolutions)
+            {
+                if (solution == null || solution.Engine == null) continue;
+                AvailablePart available = ResolveAvailablePartForPartExplorer(
+                    solution.Engine.PartName,
+                    solution.Engine.PartUrl);
+                string key = PartExplorerPartKey(available);
+                if (available == null || string.IsNullOrEmpty(key)) continue;
+
+                if (seen.Add(key))
+                {
+                    parts.Add(available);
+                    choices[key] = solution;
+                }
+            }
+
+            // If the currently selected row represents the picked physical engine, prefer
+            // that row's engine count/settings. Otherwise the first displayed row for the
+            // physical part is used, which matches the first Add button the user sees.
+            if (_selected != null && visibleSolutions.Contains(_selected) && _selected.Engine != null)
+            {
+                AvailablePart selectedPart = ResolveAvailablePartForPartExplorer(
+                    _selected.Engine.PartName,
+                    _selected.Engine.PartUrl);
+                string selectedKey = PartExplorerPartKey(selectedPart);
+                if (!string.IsNullOrEmpty(selectedKey) && choices.ContainsKey(selectedKey))
+                    choices[selectedKey] = _selected;
+            }
+
+            OpenPartExplorerPicker(
+                parts,
+                "engine",
+                "candidate engine list",
+                "VesselPlanner - Candidate Engines",
+                delegate(AvailablePart picked)
+                {
+                    string key = PartExplorerPartKey(picked);
+                    StageSolution choice;
+                    if (!string.IsNullOrEmpty(key) && choices.TryGetValue(key, out choice) && choice != null)
+                    {
+                        SpawnEngine(choice);
+                        return;
+                    }
+
+                    _status = "The engine selected in PartExplorer is no longer available in the current candidate list.";
+                });
+        }
+
+        private int CountTankPartsForPartExplorer()
+        {
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            IEnumerable<TankSuggestion> visibleSuggestions = _tankSuggestions
+                .Where(TankMatchesTextFilter)
+                .Take(100);
+
+            foreach (TankSuggestion suggestion in visibleSuggestions)
+            {
+                if (suggestion == null || suggestion.Tanks == null) continue;
+                foreach (TankSuggestionPart item in suggestion.Tanks)
+                {
+                    if (item == null || item.Tank == null || item.Count <= 0) continue;
+                    string key = PartExplorerPartKey(item.Tank.PartName, item.Tank.PartUrl);
+                    if (!string.IsNullOrEmpty(key)) seen.Add(key);
+                }
+            }
+
+            return seen.Count;
+        }
+
+        private void OpenTankListInPartExplorer()
+        {
+            List<AvailablePart> parts = new List<AvailablePart>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, PartExplorerTankChoice> choices =
+                new Dictionary<string, PartExplorerTankChoice>(StringComparer.OrdinalIgnoreCase);
+
+            List<TankSuggestion> visibleSuggestions = _tankSuggestions
+                .Where(TankMatchesTextFilter)
+                .Take(100)
+                .ToList();
+
+            foreach (TankSuggestion suggestion in visibleSuggestions)
+            {
+                if (suggestion == null || suggestion.Tanks == null) continue;
+                foreach (TankSuggestionPart item in suggestion.Tanks)
+                {
+                    if (item == null || item.Tank == null || item.Count <= 0) continue;
+                    AvailablePart available = ResolveAvailablePartForPartExplorer(
+                        item.Tank.PartName,
+                        item.Tank.PartUrl);
+                    string key = PartExplorerPartKey(available);
+                    if (available == null || string.IsNullOrEmpty(key)) continue;
+
+                    if (seen.Add(key))
+                    {
+                        parts.Add(available);
+                        choices[key] = new PartExplorerTankChoice
+                        {
+                            Suggestion = suggestion,
+                            Part = item
+                        };
+                    }
+                }
+            }
+
+            // PartExplorer picks a physical AvailablePart, so B9 subtypes that share a
+            // part cannot be distinguished there. If the user has already selected a
+            // tank set containing that physical part, prefer the selected set/subtype.
+            if (_selectedTank != null && visibleSuggestions.Contains(_selectedTank) && _selectedTank.Tanks != null)
+            {
+                foreach (TankSuggestionPart item in _selectedTank.Tanks)
+                {
+                    if (item == null || item.Tank == null || item.Count <= 0) continue;
+                    AvailablePart available = ResolveAvailablePartForPartExplorer(
+                        item.Tank.PartName,
+                        item.Tank.PartUrl);
+                    string key = PartExplorerPartKey(available);
+                    if (!string.IsNullOrEmpty(key) && choices.ContainsKey(key))
+                    {
+                        choices[key] = new PartExplorerTankChoice
+                        {
+                            Suggestion = _selectedTank,
+                            Part = item
+                        };
+                    }
+                }
+            }
+
+            OpenPartExplorerPicker(
+                parts,
+                "tank",
+                "tank list",
+                "VesselPlanner - Tanks",
+                delegate(AvailablePart picked)
+                {
+                    string key = PartExplorerPartKey(picked);
+                    PartExplorerTankChoice choice;
+                    if (!string.IsNullOrEmpty(key) && choices.TryGetValue(key, out choice) &&
+                        choice != null && choice.Suggestion != null && choice.Part != null)
+                    {
+                        AddTankChoiceFromPartExplorer(choice);
+                        return;
+                    }
+
+                    _status = "The tank selected in PartExplorer is no longer available in the current tank list.";
+                });
+        }
+
+        private void AddTankChoiceFromPartExplorer(PartExplorerTankChoice choice)
+        {
+            if (choice == null || choice.Suggestion == null || choice.Part == null) return;
+
+            int displayedParts = choice.Suggestion.Tanks == null
+                ? 0
+                : choice.Suggestion.Tanks.Count(item =>
+                    item != null && item.Tank != null && item.Count > 0);
+
+            // Mirror DrawTankActionCell exactly: a one-part row's Add button acts on the
+            // complete suggestion, while a mixed row's Add Tank button acts on the
+            // individual component that PartExplorer returned.
+            if (displayedParts <= 1)
+                SpawnTank(choice.Suggestion);
+            else
+                SpawnTankPart(choice.Part);
+        }
+
+        private void OpenPartExplorerPicker(
+            List<AvailablePart> parts,
+            string partKind,
+            string listName,
+            string sourceTitle,
+            Action<AvailablePart> onSelected)
+        {
+            if (parts == null || parts.Count < 2)
+            {
+                _status = "At least two " + partKind + " parts from the current " + listName + " are required to open PartExplorer.";
+                return;
+            }
+
+            if (PartExplorerWrapper.ApiVersion < 3)
+            {
+                _status = "PartExplorer API version 3 or later is required for part picking.";
+                return;
+            }
+
+            if (PartExplorerWrapper.PickPart(parts, sourceTitle, onSelected))
+            {
+                _status = "Opened PartExplorer to choose from " + parts.Count.ToString(CultureInfo.InvariantCulture) +
+                    " " + partKind + (parts.Count == 1 ? " part" : " parts") +
+                    " in the current " + listName + ". Picking a part performs the same action as its Add button.";
+                return;
+            }
+
+            string error = PartExplorerWrapper.LastError;
+            _status = "Unable to open PartExplorer" +
+                (string.IsNullOrEmpty(error) ? "." : ": " + error);
+        }
+
+        private static string PartExplorerPartKey(AvailablePart part)
+        {
+            return part == null ? string.Empty : PartExplorerPartKey(part.name, part.partUrl);
+        }
+
+        private static string PartExplorerPartKey(string partName, string partUrl)
+        {
+            if (!string.IsNullOrEmpty(partUrl))
+                return "url:" + partUrl;
+
+            if (string.IsNullOrEmpty(partName))
+                return string.Empty;
+
+            return "name:" + partName.Split(':')[0];
+        }
+
+        private static AvailablePart ResolveAvailablePartForPartExplorer(string partName, string partUrl)
+        {
+            if (PartLoader.LoadedPartsList == null) return null;
+
+            if (!string.IsNullOrEmpty(partUrl))
+            {
+                AvailablePart byUrl = PartLoader.LoadedPartsList.FirstOrDefault(p =>
+                    p != null && string.Equals(p.partUrl, partUrl, StringComparison.OrdinalIgnoreCase));
+                if (byUrl != null) return byUrl;
+            }
+
+            if (string.IsNullOrEmpty(partName)) return null;
+            string baseName = partName.Split(':')[0];
+            return PartLoader.LoadedPartsList.FirstOrDefault(p =>
+                p != null && string.Equals(p.name, baseName, StringComparison.OrdinalIgnoreCase));
         }
 
         private bool ColumnVisible(SolutionColumn column)
@@ -2254,8 +2535,28 @@ namespace VesselPlanner.UI
             using (new GUILayout.HorizontalScope())
             {
                 GUILayout.Label("Tanks");
-                GUILayout.FlexibleSpace();
-                GUILayout.Label("Tanks needed for the selected propellant requirement");
+                GUILayout.Label(
+                    "Tanks needed for the selected propellant requirement",
+                    _center,
+                    GUILayout.ExpandWidth(true));
+                GUILayout.Space(6f);
+                if (PartExplorerWrapper.IsInstalled)
+                {
+                    int partExplorerTankCount = CountTankPartsForPartExplorer();
+                    bool partExplorerApiV3 = PartExplorerWrapper.ApiVersion >= 3;
+                    bool oldEnabled = GUI.enabled;
+                    GUI.enabled = oldEnabled && partExplorerApiV3 && partExplorerTankCount >= 2;
+                    string partExplorerTooltip = !partExplorerApiV3
+                        ? "PartExplorer API version 3 or later is required for part picking."
+                        : partExplorerTankCount >= 2
+                            ? "Choose a tank in PartExplorer. Picking it is the same as clicking the matching Add Tank/Add button."
+                            : "At least two unique tank parts must be shown before opening PartExplorer.";
+                    if (GUILayout.Button(
+                        new GUIContent("PartExplorer", partExplorerTooltip),
+                        GUILayout.Width(105f)))
+                        OpenTankListInPartExplorer();
+                    GUI.enabled = oldEnabled;
+                }
             }
             DrawTankSuggestions();
             GUILayout.EndVertical();
@@ -3732,6 +4033,7 @@ namespace VesselPlanner.UI
             if (_styleSkinRevision != WindowSkin.Revision)
             {
                 _right = null;
+                _center = null;
                 _gripStyle = null;
                 _darkBox = null;
                 _styleSkinRevision = WindowSkin.Revision;
@@ -3740,6 +4042,11 @@ namespace VesselPlanner.UI
             {
                 _right = new GUIStyle(GUI.skin.label);
                 _right.alignment = TextAnchor.MiddleRight;
+            }
+            if (_center == null)
+            {
+                _center = new GUIStyle(GUI.skin.label);
+                _center.alignment = TextAnchor.MiddleCenter;
             }
             if (_gripStyle == null)
             {

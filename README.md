@@ -1,4 +1,4 @@
-﻿# VesselPlanner for KSP1
+# VesselPlanner for KSP1
 
 VesselPlanner is a planning, staging, mission-design, delta-v reference, part-selection, and flight-telemetry mod for **Kerbal Space Program 1.12.x**.
 
@@ -35,6 +35,10 @@ VesselPlanner requires:
 - **Kerbal Space Program 1.12.x**
 - **ToolbarController**
 - **ClickThroughBlocker**
+
+Optional integration:
+
+- **PartExplorer** - when PartExplorer is installed with API v3 or later, adds picker buttons for the candidate engine list and Planning tank list. Each button opens PartExplorer restricted to the unique physical parts represented by that list; picking a part performs the same action as the matching VesselPlanner **Add** button. The buttons are enabled only when at least two unique parts are available. VesselPlanner uses the bundled reflection wrapper, so PartExplorer is not a hard dependency.
 
 The dependency folders are normally:
 
@@ -252,7 +256,7 @@ Planning and Analyze Existing share a sortable candidate engine table. Available
 - Bulkhead profile
 - Add action
 
-Individual columns can be enabled or disabled in Settings.
+Individual columns can be enabled or disabled in Settings. When PartExplorer API v3 or later is installed, the **PartExplorer** button beside the list opens PartExplorer as a picker restricted to the unique engine parts represented by the currently displayed candidate rows. Picking an engine performs the same action as clicking that row's **Add** button. If one physical engine appears in several rows, the currently selected matching row is preferred; otherwise the first displayed match is used. The button is disabled until at least two unique engine parts are shown.
 
 Candidates come from KSP's loaded part database after editor `ExcludeFilters` are applied. The currently selected KSP editor category is not used as a VesselPlanner candidate filter.
 
@@ -289,6 +293,7 @@ Tank planning supports:
 - **Add to Stage** behavior while Stage-By-Stage is capturing an Engines & Tanks stage.
 - B9PartSwitch fuel subtypes when B9PartSwitch is installed. Each subtype is treated as a distinct tank candidate and keeps its switcher source, subtype name/title, `tankType`, `addedMass`, and `addedCost` metadata.
 - B9 subtype capacities generated from the loaded `B9_TANK_TYPE` resource definitions and the switcher's effective tank volume.
+- When PartExplorer API v3 or later is installed, a **PartExplorer** button beside the tank list opens PartExplorer as a picker restricted to the unique physical tank parts represented by the current filtered suggestions. Picking a tank performs the same action as the matching **Add Tank** (or single-tank-row Add) button. Multiple B9 subtypes of the same physical part are shown once; when that is ambiguous, the currently selected matching tank set/subtype is preferred. The button is disabled until at least two unique tank parts are shown.
 
 Tank suggestions require storage parts with both `top` and `bottom` attach nodes. Radial or one-ended tanks are intentionally excluded from this list.
 

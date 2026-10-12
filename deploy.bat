@@ -9,7 +9,7 @@ rem    but not always
 
 set H=%KSPDIR%
 
-set H=R:\KSP\KSP_1.12.5-VesselPlanner
+rem set H=R:\KSP\KSP_1.12.5-VesselPlanner
 set GAMEDIR=VesselPlanner
 set GAMEDATA="GameData"
 set VERSIONFILE=%GAMEDIR%.version
